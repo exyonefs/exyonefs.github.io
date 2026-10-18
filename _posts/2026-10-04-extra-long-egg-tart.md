@@ -3,6 +3,7 @@ title: 分享一下最近很火爆的超长蛋挞，本站图床也正式上线�
 date: 2026-10-04
 categories: [闲情杂记]
 tags: [生活, 美食]
+image: https://img.exyon.ee/i/202610/1791119186-JM6XtJJLnS.webp
 ---
 
 我一直都希望能给博客添加一个图床，但可惜先前一直没有找到合适的方案，最后决定先用家用服务器跑起来再说：清羽飞扬美化版的[兰空图床](https://github.com/willow-god/LSKY-Pro-LiuShen) + **Cloudflare Tunnel 隧道** + 家用服务器。先放几张效果图，由于使用的是 Cloudflare 的内网穿透方案，部分地区的加载速度可能会非常慢：

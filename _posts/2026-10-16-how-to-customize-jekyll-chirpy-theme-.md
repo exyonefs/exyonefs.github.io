@@ -3,6 +3,7 @@ title: 也许是全网最好的 Jekyll Chirpy 主题定制教程：我的个人�
 date: 2026-10-16
 categories: [技术笔记]
 tags: [Jekyll, Chirpy, SSG, 前端]
+image: https://chirpy-img.netlify.app/commons/devices-mockup.png
 ---
 
 如果需要文中的源代码，可以直接访问 [GitHub 仓库](https://github.com/exyonefs/exyonefs.github.io) 获取。
