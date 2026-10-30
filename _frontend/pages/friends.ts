@@ -653,6 +653,8 @@ body{
 
 .fe-item{
   position:relative;
+  display:flex;
+  flex-direction:column;
   padding:1.35rem 1.5rem;
   border-radius:var(--radius-card);
   background:var(--surface);
@@ -681,13 +683,16 @@ body{
 }
 
 .fe-item__summary{
-  margin-top:.55rem;font-size:.78rem;color:var(--muted);line-height:1.55;
+  margin-top:.55rem;
+  margin-bottom:.85rem;
+  font-size:.78rem;color:var(--muted);line-height:1.55;
   overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
 }
 
 .fe-item__meta{
   display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;
-  margin-top:.85rem;padding-top:.75rem;
+  margin-top:auto;
+  padding-top:.75rem;
   font-size:.7rem;color:var(--muted);
   border-top:1px solid color-mix(in srgb,var(--neu-dark) 55%,transparent);
 }

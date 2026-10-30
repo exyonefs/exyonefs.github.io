@@ -1,5 +1,5 @@
 ---
-title: 复古外形，简单小巧，iPhone SE3 使用体验
+title: "iPhone SE3 这台手机：复古轻巧却够用的取舍，适合哪些人？｜硬件 DIY"
 date: 2025-09-09
 categories: [闲情杂记]
 tags: [数码, iPhone]

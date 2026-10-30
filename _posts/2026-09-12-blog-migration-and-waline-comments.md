@@ -1,5 +1,5 @@
 ---
-title: 博客再次搬家：回归 Jekyll，并为 Chirpy 接入 Waline
+title: "博客搬家：回归 Jekyll 并为 Chirpy 同时接入 Waline 与 Giscus｜建站日志"
 date: 2026-09-12T00:00:00.000Z
 categories:
 - 项目分享

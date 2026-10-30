@@ -1,5 +1,5 @@
 ---
-title: Copilot 数据政策变更后，AI 时代下的开源项目该怎么应对
+title: "Copilot 新政策：对开源项目的影响与应对措施｜技术笔记"
 date: 2026-03-28T00:00:00.000Z
 categories:
   - 技术笔记

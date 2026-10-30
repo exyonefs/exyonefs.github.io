@@ -1,5 +1,5 @@
 ---
-title: 给我的 iPhone 6s 越狱，顺便谈谈苹果手机越狱的利与弊
+title: "iPhone 6s 旧机越狱：折腾记录与避坑要点｜硬件 DIY"
 date: 2025-11-27
 categories: [项目分享]
 tags: [数码, iPhone]

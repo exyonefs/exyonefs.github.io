@@ -1,5 +1,5 @@
 ---
-title: OneDev CI/CD 配置指南：从报错到成功部署，深入浅出 Actions 环境
+title: "OneDev CI/CD 配置指南：从报错到成功部署，深入浅出 Actions 环境｜疑难杂症"
 date: 2026-05-03T00:00:00.000Z
 categories:
   - 技术笔记

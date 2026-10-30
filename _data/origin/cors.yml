@@ -22,13 +22,18 @@ resource_hints:
 webfonts: https://fonts.loli.net/css2?family=Lato:wght@300;400&family=Noto+Sans+SC:wght@400;500;700&family=Source+Sans+Pro:wght@400;600;700;900&display=swap
 
 # Libraries
+#
+# Third-party bundles are mirrored under assets/lib so that page rendering no
+# longer depends on cdn.jsdelivr.net. `jsdelivr-combine.html` only merges URLs
+# on the jsDelivr domain, so plain paths below are emitted one <script> each.
+# Fonts and the Waline emoji sets are still served from remote mirrors.
 
 bootstrap:
-  css: https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css
+  css: /assets/lib/bootstrap/bootstrap.min.css
 
 toc:
-  css: https://cdn.jsdelivr.net/npm/tocbot@4/dist/tocbot.min.css
-  js: https://cdn.jsdelivr.net/npm/tocbot@4/dist/tocbot.min.js
+  css: /assets/lib/tocbot/tocbot.min.css
+  js: /assets/lib/tocbot/tocbot.min.js
 
 fontawesome:
   css: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/font-awesome/7.0.1/css/all.min.css
@@ -37,25 +42,25 @@ search:
   js: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/simple-jekyll-search/1.0.3/jekyll-search.min.js
 
 mermaid:
-  js: https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js
+  js: /assets/lib/mermaid/mermaid.min.js
 
 dayjs:
   js:
-    common: https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js
-    locale: https://cdn.jsdelivr.net/npm/dayjs@1/locale/:LOCALE.js
-    relativeTime: https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js
-    localizedFormat: https://cdn.jsdelivr.net/npm/dayjs@1/plugin/localizedFormat.js
+    common: /assets/lib/dayjs/dayjs.min.js
+    locale: /assets/lib/dayjs/locale/:LOCALE.js
+    relativeTime: /assets/lib/dayjs/plugin/relativeTime.js
+    localizedFormat: /assets/lib/dayjs/plugin/localizedFormat.js
 
 glightbox:
-  css: https://cdn.jsdelivr.net/npm/glightbox@3/dist/css/glightbox.min.css
-  js: https://cdn.jsdelivr.net/npm/glightbox@3/dist/js/glightbox.min.js
+  css: /assets/lib/glightbox/glightbox.min.css
+  js: /assets/lib/glightbox/glightbox.min.js
 
 lazy-polyfill:
-  css: https://cdn.jsdelivr.net/npm/loading-attribute-polyfill@2/dist/loading-attribute-polyfill.min.css
-  js: https://cdn.jsdelivr.net/npm/loading-attribute-polyfill@2/dist/loading-attribute-polyfill.umd.min.js
+  css: /assets/lib/loading-attribute-polyfill/loading-attribute-polyfill.min.css
+  js: /assets/lib/loading-attribute-polyfill/loading-attribute-polyfill.umd.min.js
 
 clipboard:
-  js: https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js
+  js: /assets/lib/clipboard/clipboard.min.js
 
 mathjax:
   js: https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js

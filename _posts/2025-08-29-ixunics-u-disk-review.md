@@ -1,5 +1,5 @@
 ---
-title: IXUNICS U 盘使用体验，顺便谈谈 WinToGo
+title: "IXUNICS 固态 U 盘：4K 随机读写性能是 WinToGo 的基础门槛｜硬件 DIY"
 date: 2025-08-29
 categories: [闲情杂记]
 tags: [数码, U盘]

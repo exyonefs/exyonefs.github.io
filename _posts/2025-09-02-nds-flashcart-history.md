@@ -1,5 +1,5 @@
 ---
-title: NDS 烧录卡的历史渊源与发展历程，介绍一些常见的 NDS 烧录卡
+title: "NDS 烧录卡的历史：渊源与常见型号的梳理记录｜硬件 DIY"
 date: 2025-09-02
 categories: [闲情杂记]
 tags: [数码, NDS]

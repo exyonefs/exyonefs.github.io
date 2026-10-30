@@ -1,5 +1,5 @@
 ---
-title: 也许是全网最好的 Jekyll Chirpy 主题定制教程：我的个人博客定制方案
+title: "Jekyll Chirpy 主题定制：覆盖机制与注入钩子的实现方案｜建站日志"
 date: 2026-10-16
 categories: [技术笔记]
 tags: [Jekyll, Chirpy, SSG, 前端]

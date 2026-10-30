@@ -308,7 +308,7 @@ chirpy_enhance:
       playlistId: "DOPRl"
     cdn:
       js:
-        - "https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"
+        - "/assets/lib/howler/howler.min.js"
 
   # Floating daily quote card.
   quotes:

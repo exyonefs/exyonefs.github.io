@@ -1,5 +1,5 @@
 ---
-title: 全面改造升级 Waline 评论系统：Netlify + GitHub 免数据库部署方案
+title: "Waline 评论系统改造：Netlify + GitHub 免数据库分片存储｜软件开发"
 date: 2026-10-02
 categories: [项目分享]
 tags: [开源, Waline, Netlify, GitHub]

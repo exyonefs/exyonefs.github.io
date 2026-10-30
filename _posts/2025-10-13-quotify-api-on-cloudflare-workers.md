@@ -1,5 +1,5 @@
 ---
-title: Quotify：一个可以部署在 Cloudflare Workers 上的仿一言 API
+title: "Quotify 引语：无数据库部署 Cloudflare 的仿一言 API 方案｜软件开发"
 date: 2025-10-13
 categories: [项目分享]
 tags: [开源, Cloudflare, TypeScript]

@@ -1,5 +1,5 @@
 ---
-title: 介绍一下我开发的 Zest 静态网站生成器项目
+title: "Zest 静态网站生成器：模板即代码的 F# DSL 设计理念｜软件开发"
 date: 2026-10-06
 categories: [项目分享]
 tags: [开源, .NET, F#, SSG]
