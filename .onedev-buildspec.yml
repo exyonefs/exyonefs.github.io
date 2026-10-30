@@ -332,7 +332,7 @@ jobs:
   - type: TagCreateTrigger
 
   # Retry common network errors when accessing GitHub from mainland China.
-  retryCondition: '"Error Message" contains "Could not resolve host" or "Error Message" contains "Connection timed out" or "Error Message" contains "Failed to connect" or "Error Message" contains "unable to access" or "Error Message" contains "Connection reset"'
+  retryCondition: '"Log" contains "Could not resolve host" or "Log" contains "Connection timed out" or "Log" contains "Failed to connect" or "Log" contains "unable to access" or "Log" contains "Connection reset"'
   maxRetries: 100
   retryDelay: 60
   timeout: 300
