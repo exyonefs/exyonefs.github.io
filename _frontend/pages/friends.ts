@@ -12,9 +12,9 @@
  *   assets/js/friends.js        ← shared navigation helper
  *
  * The shared stylesheet and script land in the site-wide `assets/` tree — the
- * same place the esbuild bundle (`assets/js/bundle.js`) lives — and are served
- * from `/assets/...`, so they follow the project's asset layout and stay
- * cacheable across every page of the site.
+ * same place `assets/js/chirpy-enhance.min.js` lives — and are served from
+ * `/assets/...`, so they follow the project's asset layout and stay cacheable
+ * across every page of the site.
  *
  * The previous revision rendered ONE document that shipped *every* pagination
  * page at once and swapped between them with an in-memory index. Each page is
@@ -68,8 +68,8 @@ const OUTPUT_ROOT = 'friends';
 const PAGE_SEGMENT = 'page';
 /**
  * Shared assets are written into the site-wide `assets/` tree — the same place
- * the esbuild bundle (`assets/js/bundle.js`) lands — and are served from
- * `/assets/...`, so they are cached across every page of the site.
+ * `assets/js/chirpy-enhance.min.js` lands — and are served from `/assets/...`,
+ * so they are cached across every page of the site.
  */
 const ASSETS_ROOT = 'assets';
 const CSS_SEGMENT = 'css';

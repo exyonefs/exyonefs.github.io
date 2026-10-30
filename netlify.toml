@@ -8,3 +8,13 @@
 
 [build]
   publish = "_site"
+
+# The compiled enhancement script is fetched by pages on other origins
+# (embeds / mirrors of this site), so it must be readable cross-origin.
+# Mirrors the Cloudflare Pages rule in `_headers`.
+[[headers]]
+  for = "/assets/js/chirpy-enhance.min.js"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS"
+    Cross-Origin-Resource-Policy = "cross-origin"

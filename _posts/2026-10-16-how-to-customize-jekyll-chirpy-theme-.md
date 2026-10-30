@@ -6,6 +6,8 @@ tags: [Jekyll, Chirpy, SSG, 前端]
 image: https://chirpy-img.netlify.app/commons/devices-mockup.png
 ---
 
+更新：现在你也可以直接引用 `<script defer src="{{ 'https://exyon.ee/assets/js/chirpy-enhance.min.js' | relative_url }}" data-config="{{ site.chirpy_enhance | jsonify | escape }}"></script>` 来使用这个增强脚本了，我为其添加了跨源访问
+
 如果需要文中的源代码，可以直接访问 [GitHub 仓库](https://github.com/exyonefs/exyonefs.github.io) 获取。
 
 先插一句题外话。细心的朋友可能发现，我把 GitHub 用户名从 `exyone-js` 改成了 `exyonefs`。原因说来简单：以 JavaScript 命名的项目实在烂大街，`F#` 反而更有新鲜感；况且在 GitHub Pages 的域名里，`exyonefs.github.io` 比 `exyone-js.github.io` 更紧凑，也更好看。权衡之下就换了。
@@ -254,7 +256,7 @@ Giscus 折叠面板还有一点体验细节：展开状态存进 `localStorage`�
 
 ### 悬浮卡片：音乐与引语
 
-右上角有两张可拖拽卡片，交互逻辑同源。音乐卡用 Howler.js 作为音频引擎，歌单来自 Audius（`playlistId` 为 `DOPRl`），支持上一首、播放暂停、下一首；播放进度用宽度渐变填充，整条可点击或拖动跳转，缓冲时提示行末尾挂一个旋转的小圆圈。播放模式（顺序、随机、单曲循环、列表循环）由 `site_enhance.player.order` 决定，默认 `random`。引语卡（标记里叫 `#quotify-card`）从 `https://htk.exyon.ee/api/quotes` 拉取引语，点一下换一句，加载中是半透明态，失败则转为红色提示。
+右上角有两张可拖拽卡片，交互逻辑同源。音乐卡用 Howler.js 作为音频引擎，歌单来自 Audius（`playlistId` 为 `DOPRl`），支持上一首、播放暂停、下一首；播放进度用宽度渐变填充，整条可点击或拖动跳转，缓冲时提示行末尾挂一个旋转的小圆圈。播放模式（顺序、随机、单曲循环、列表循环）由 `chirpy_enhance.player.order` 决定，默认 `random`。引语卡（标记里叫 `#quotify-card`）从 `https://htk.exyon.ee/api/quotes` 拉取引语，点一下换一句，加载中是半透明态，失败则转为红色提示。
 
 两张卡的头部都是拖拽把手，双击可归位，位置记进 `localStorage`。`#tool-cards` 容器铺满视口但 `pointer-events: none`，只有卡片本身接收事件，拖动时不会误触正文。隐藏用的是 `visibility` 而非 `display`，保留合成层，避免出现时闪一下；卡片自身再把 `[hidden]` 改回 `display: block`，让语义属性和动画并存。
 
@@ -276,12 +278,12 @@ Giscus 折叠面板还有一点体验细节：展开状态存进 `localStorage`�
 
 ### 前端工程化方式
 
-这些交互不是散落的 `<script>`，而是 TypeScript 源码放在 `_frontend/src/`，用 esbuild 打成单个 `assets/js/bundle.js`，以 `defer` 加载。公共能力集中在 `core.ts`：命名空间与模块注册表、事件总线、永不抛错的 DOM 与存储 helper、CDN 感知的资源加载，以及带超时的 `fetch` 封装。每个模块只负责自己的界面与状态，出错时被 `guard` 兜住，不会连累页面其余部分。
+这些交互不是散落的 `<script>`，而是 TypeScript 源码放在 `_frontend/src/`，用 esbuild 打成单个 `assets/js/chirpy-enhance.min.js`，以 `defer` 加载。公共能力集中在 `core.ts`：命名空间与模块注册表、事件总线、永不抛错的 DOM 与存储 helper、CDN 感知的资源加载，以及带超时的 `fetch` 封装。每个模块只负责自己的界面与状态，出错时被 `guard` 兜住，不会连累页面其余部分。
 
-配置走 `_config.yml` 的 `site_enhance` 段，`_includes/metadata-hook.html` 把它序列化成 `window.SITE_ENHANCE`，YAML 里的 snake_case 在注入时转成 camelCase。改行为不用碰代码，改配置即可：
+配置走 `_config.yml` 的 `chirpy_enhance` 段，`_includes/metadata-hook.html` 把整段原样 `jsonify` 到脚本标签的 `data-config` 属性上（`window.CHIRPY_ENHANCE` 仍可作运行时覆盖），YAML 里的 snake_case 由脚本自己归一化成 camelCase。改行为不用碰代码，改配置即可：
 
 ```yml
-site_enhance:
+chirpy_enhance:
   # Simplified <-> Traditional Chinese toggle, Alt+Z or context menu.
   zh_convert:
     enabled: true
@@ -302,7 +304,7 @@ site_enhance:
     max: 6
 ```
 
-源码与产物分开：`_config.yml` 的 `exclude` 里排除 `_frontend` 与 `node_modules`，只有编译好的 `assets/js/bundle.js` 会进站点。构建脚本集中在 `package.json`，`npm run build` 出产物，`npm run watch` 边改边看，`npm run typecheck` 单独跑类型检查。同一条流水线还带出一个构建期脚本 `_frontend/pages/friends.ts`，用 `npm run pages` 抓取友链 RSS，生成 `friends/` 下的多页静态站点和共享样式；`npm run build:site` 把两者串在一起。
+源码与产物分开：`_config.yml` 的 `exclude` 里排除 `_frontend` 与 `node_modules`，只有编译好的 `assets/js/chirpy-enhance.min.js` 会进站点。构建脚本集中在 `package.json`，`npm run build` 出产物，`npm run watch` 边改边看，`npm run typecheck` 单独跑类型检查。同一条流水线还带出一个构建期脚本 `_frontend/pages/friends.ts`，用 `npm run pages` 抓取友链 RSS，生成 `friends/` 下的多页静态站点和共享样式；`npm run build:site` 把两者串在一起。
 
 需要说明的是，选 TypeScript 只是偏好，不是门槛。同一套逻辑写成普通 JavaScript、直接放进 `assets/js/` 一样能跑：`assets/` 下的静态文件会被 Jekyll 原样拷进站点，只要在 `_includes/metadata-hook.html` 里补一行 `<script defer src="/assets/js/xxx.js"></script>`（站点配了 `baseurl` 就套上 `relative_url`）即可。这条路不需要 Node.js，也没有构建步骤，代价是失去类型检查、模块拆分与压缩，多个文件之间共享代码得靠全局命名空间或 IIFE 自己收拾。反过来，若采用本文的做法，`npm run build` 这类命令就离不开 Node.js 与 `node_modules`；只想改配置和样式的读者，则可以完全不碰这一层。
 

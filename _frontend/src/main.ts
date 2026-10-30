@@ -5,9 +5,15 @@
  * the modules, wires global keyboard shortcuts and exposes the public API on
  * `window.SiteEnhance`.
  *
- * The import order below is the load order: `core` builds the namespace, every
- * module then registers itself, and this file runs last.
+ * The import order below is the load order: `styles` injects the stylesheet,
+ * `markup` injects the DOM, `core` builds the namespace, every module then
+ * binds to that markup and registers itself, and this file runs last.
  */
+/* First imports on purpose: the stylesheet and the markup must exist before any
+   module below evaluates (they query their hosts at import time, and read
+   computed --enh-* tokens). */
+import './styles';
+import './markup';
 import { Enhance, asElement } from './core';
 import './card';
 import './zh-convert';
@@ -168,6 +174,7 @@ window.SiteEnhance = {
   Music: Enhance.Music,
   Quotes: Enhance.Quotes,
   Reading: Enhance.Reading,
+  Particles: Enhance.Particles,
   ClickEffect: Enhance.ClickEffect,
   ContextMenu: Enhance.ContextMenu,
   Shortcuts: Shortcuts

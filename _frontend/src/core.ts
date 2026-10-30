@@ -7,8 +7,9 @@
  *   - DOM, storage, timing and clipboard helpers that never throw
  *   - CDN-aware asset loading and resilient JSON requests
  *
- * Configuration is read from the inline `window.SITE_ENHANCE` object emitted by
- * `_includes/metadata-hook.html`; missing entries fall back to DEFAULT_CONFIG.
+ * Configuration arrives on the script tag itself (`data-config`, emitted by
+ * `_includes/metadata-hook.html`) or, for programmatic overrides, from the
+ * `window.CHIRPY_ENHANCE` global. Missing entries fall back to DEFAULT_CONFIG.
  */
 import type {
   BusApi,
@@ -50,11 +51,14 @@ const DEFAULT_CONFIG: SiteEnhanceConfig = {
   quotes: {
     enabled: true,
     timeout: REQUEST_TIMEOUT,
-    endpoints: ['https://htk.exyon.ee/api/quotes']
+    endpoints: ['https://quot.exyon.ee/api/quotes']
   },
 
   /* Reading progress bar. */
   reading: { enabled: true, ease: 0.13 },
+
+  /* Particle network backdrop (canvas, desktop only). */
+  particles: { enabled: true },
 
   /* Custom context menu. Groups accept `true | false` or an object:
      link: { enabled: true, items: { 'copy-html-link': false } } */
@@ -92,6 +96,45 @@ function mergeConfig<T>(base: T, custom: unknown): T {
   }
 
   return out as T;
+}
+
+/* YAML is written in snake_case (`zh_convert`, `click_effect`); every other
+   layer speaks camelCase. Normalising here keeps the include a one-liner: it
+   serialises the `chirpy_enhance` block verbatim instead of rebuilding it key by
+   key in Liquid, so config keys have exactly one place to change. */
+function camelCaseKey(key: string): string {
+  return key.replace(/_+([a-z0-9])/g, function (_match: string, chr: string): string {
+    return chr.toUpperCase();
+  });
+}
+
+function normaliseKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normaliseKeys);
+  if (!value || typeof value !== 'object') return value;
+
+  const source = value as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  Object.keys(source).forEach(function (key) {
+    out[camelCaseKey(key)] = normaliseKeys(source[key]);
+  });
+  return out;
+}
+
+/* The theme puts the configuration on the script tag, so a page needs exactly
+   one line of markup. Falls back to the first tagged script when the bundle was
+   loaded as a module (no `document.currentScript`) or evaluated late. */
+function embeddedConfig(): unknown {
+  const current = document.currentScript as HTMLScriptElement | null;
+  const script = current || document.querySelector<HTMLScriptElement>('script[data-config]');
+  const raw = script && script.dataset ? script.dataset.config : '';
+  if (!raw) return {};
+
+  try {
+    return normaliseKeys(JSON.parse(raw));
+  } catch (error) {
+    console.warn('[chirpy-enhance] config: invalid data-config payload');
+    return {};
+  }
 }
 
 /* ----------------------------------------------------------------- DOM -- */
@@ -430,7 +473,12 @@ function register<T extends object | null>(name: string, module: T): T {
 const Enhance = (window.Enhance || {}) as EnhanceApi;
 window.Enhance = Enhance;
 
-Enhance.CONFIG = mergeConfig(DEFAULT_CONFIG, window.SITE_ENHANCE);
+/* Defaults, then the markup's payload, then a global override if one exists.
+   Both hand-written sources accept snake_case or camelCase keys. */
+Enhance.CONFIG = mergeConfig(
+  mergeConfig(DEFAULT_CONFIG, embeddedConfig()),
+  normaliseKeys(window.CHIRPY_ENHANCE)
+);
 
 Enhance.modules = modules;
 Enhance.$ = $;

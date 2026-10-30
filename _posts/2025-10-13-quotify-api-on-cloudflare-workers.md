@@ -7,8 +7,6 @@ tags: [开源, Cloudflare, TypeScript]
 
 [项目仓库](https://github.com/exyonefs/quotify)
 
-本站右键菜单那张「每日一句」卡片，数据来自一条自建的引语接口——`_config.yml` 里 `site_enhance.quotes.endpoints` 填的就是 `https://htk.exyon.ee/api/quotes`。这条接口就是我要在这篇文章里介绍的 **Quotify**。
-
 Quotify 取自 `quote`，中文名 **引语**。它的功能定位参考一言（Hitokoto）：随机返回一条或多条引语，可以按分类、标签筛选，也能按关键词搜索。不过原生接口是一套自己的约定，**并不是** Hitokoto 的兼容实现；只有确实需要零改动迁移既有一言客户端时，才会用到 `/v1/hitokoto` 这层兼容壳。
 
 它部署在 **Cloudflare Workers** 上，数据源不是数据库，而是**一个或多个 `data.json`**——可以配置多个不同来源，随机抽取时合并成一个总池；运行时通过 **Cloudflare KV 懒加载缓存**，所有筛选、搜索、随机操作都在 Worker 内存里完成。整条链路不使用 D1，也不依赖任何 Node.js 专有 API。

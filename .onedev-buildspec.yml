@@ -1,16 +1,16 @@
 version: 47
-# =============================================================================
-#  OneDev CI/CD Pipeline - pages deploy
-# =============================================================================
+
+# Build is dependency-only and reused per commit.
+# Deploy jobs are independent and consume published _site artifacts.
+# GitHub Sync does not consume artifacts; it checks out and pushes source.
+# Job-level retries handle common network failures when accessing GitHub from mainland China.
+
 jobs:
 
-# ---------------------------------------------------------------------------
-#  BUILD & DEPLOY — triggered on every main-branch push
-# ---------------------------------------------------------------------------
-- name: Build & Deploy
+# Build: artifact producer with no trigger. It is started by downstream jobs and reused for the same commit.
+- name: Build
   steps:
 
-  # ---- checkout ----
   - type: CheckoutStep
     name: checkout
     cloneCredential:
@@ -18,7 +18,6 @@ jobs:
     condition: SUCCESSFUL
     optional: false
 
-  # ---- install dependencies ----
   - type: CommandStep
     name: install dependencies
     runInContainer: false
@@ -34,17 +33,13 @@ jobs:
         export PATH="/usr/local/bin:$PATH"
         ruby --version
         bundle --version
-
         export BUNDLE_JOBS=4
         export BUNDLE_RETRY=3
-
-        # Keep all gem groups (mirror Cloudflare Pages build env)
         bundle install
     useTTY: false
     condition: SUCCESSFUL
     optional: false
 
-  # ---- build site ----
   - type: CommandStep
     name: build site
     runInContainer: false
@@ -54,18 +49,6 @@ jobs:
         set -e
         cd /tmp/exyone-blog-build
         export JEKYLL_ENV="production"
-
-        # Rebuild assets/js/bundle.js from _frontend/src so a stale committed
-        # artifact can never ship.
-        if [ -f package.json ]; then
-          npm install
-          npm run typecheck
-          # Compiles _frontend/src/*.ts into assets/js/bundle.js, then generates
-          # the friends page tree. All of it must run before Jekyll so a stale
-          # committed artifact can never ship.
-          npm run build:site
-        fi
-
         bundle exec jekyll build
         if [ ! -d "_site" ]; then
           echo "Build failed! _site directory not found."
@@ -75,25 +58,33 @@ jobs:
           echo "Build failed! _site/friends/index.html not found."
           exit 1
         fi
-
+        if [ ! -f "_site/assets/js/chirpy-enhance.min.js" ]; then
+          echo "Build failed! _site/assets/js/chirpy-enhance.min.js not found."
+          exit 1
+        fi
         echo "Build successful! _site size:"
         du -sh _site/
     useTTY: false
     condition: SUCCESSFUL
     optional: false
 
-  - type: SetBuildVersionStep
-    name: set build version
-    buildVersion: '@build_number@'
+  # Publish _site/** for downstream jobs; '**' preserves the _site/ directory structure.
+  - !PublishArtifactStep
+    name: publish site
+    artifacts: '_site/**'
     condition: SUCCESSFUL
     optional: false
 
-  # =========================================================================
-  #  DEPLOY STEPS — independent & optional (ALWAYS); one failure does not
-  #  block the others
-  # =========================================================================
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
 
-  # ---- deploy: Cloudflare Pages ----
+
+# Deploy: Cloudflare Pages
+- name: Deploy to Cloudflare Pages
+  steps:
+
   - type: CommandStep
     name: deploy to cloudflare pages
     runInContainer: false
@@ -101,7 +92,6 @@ jobs:
       type: DefaultInterpreter
       commands: |
         set -e
-        cd /tmp/exyone-blog-build
         export PATH="/usr/local/bin:$(npm root -g):$PATH"
         if ! command -v wrangler &> /dev/null; then
           npm install -g wrangler
@@ -113,10 +103,29 @@ jobs:
           --branch main \
           --commit-dirty=true
     useTTY: false
-    condition: ALWAYS
-    optional: true
+    condition: SUCCESSFUL
+    optional: false
 
-  # ---- deploy: Netlify ----
+  triggers:
+  - type: BranchUpdateTrigger
+    branches: main
+    userMatch: anyone
+
+  jobDependencies:
+  - jobName: Build
+    requireSuccessful: true
+    artifacts: '**'
+
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 1800
+
+
+# Deploy: Netlify
+- name: Deploy to Netlify
+  steps:
+
   - type: CommandStep
     name: deploy to netlify
     runInContainer: false
@@ -124,20 +133,36 @@ jobs:
       type: DefaultInterpreter
       commands: |
         set -e
-        cd /tmp/exyone-blog-build
         export PATH="/usr/local/bin:$(npm root -g):$PATH"
-        NETLIFY_SITE_ID="@secret:netlify-site-id@"
-        NETLIFY_TOKEN="@secret:netlify-auth-token@"
         npx netlify-cli deploy --prod \
           --dir _site \
-          --site "$NETLIFY_SITE_ID" \
-          --auth "$NETLIFY_TOKEN" \
-          --message "OneDev #@build_number@"
+          --site "@secret:netlify-site-id@" \
+          --auth "@secret:netlify-auth-token@" \
+          --message "OneDev build #@build_number@"
     useTTY: false
-    condition: ALWAYS
-    optional: true
+    condition: SUCCESSFUL
+    optional: false
 
-  # ---- deploy: Codeberg Pages (git-push) ----
+  triggers:
+  - type: BranchUpdateTrigger
+    branches: main
+    userMatch: anyone
+
+  jobDependencies:
+  - jobName: Build
+    requireSuccessful: true
+    artifacts: '**'
+
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 1800
+
+
+# Deploy: Codeberg Pages (git push)
+- name: Deploy to Codeberg Pages
+  steps:
+
   - type: CommandStep
     name: deploy to codeberg pages
     runInContainer: false
@@ -145,13 +170,9 @@ jobs:
       type: DefaultInterpreter
       commands: |
         set -e
-        BUILD_DIR="/tmp/exyone-blog-build"
         DEPLOY_DIR="/tmp/codeberg-deploy"
-        # Shell Executor runs a non-interactive shell without HOME, which git
-        # needs for config/credentials. Point it at a writable directory.
         export HOME="${HOME:-/tmp/onedev-home}"
         mkdir -p "$HOME"
-        cd "$BUILD_DIR"
         rm -rf "$DEPLOY_DIR"
         git clone "@secret:codeberg-pages-repo-url@" "$DEPLOY_DIR" --depth 1
         find "$DEPLOY_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
@@ -164,10 +185,29 @@ jobs:
         git commit -m "Deploy: Update site from OneDev build #@build_number@"
         git push -f origin main
     useTTY: false
-    condition: ALWAYS
-    optional: true
+    condition: SUCCESSFUL
+    optional: false
 
-  # ---- deploy: GitLink Pages (git-push) ----
+  triggers:
+  - type: BranchUpdateTrigger
+    branches: main
+    userMatch: anyone
+
+  jobDependencies:
+  - jobName: Build
+    requireSuccessful: true
+    artifacts: '**'
+
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 1800
+
+
+# Deploy: GitLink Pages (git push)
+- name: Deploy to GitLink Pages
+  steps:
+
   - type: CommandStep
     name: deploy to gitlink pages
     runInContainer: false
@@ -175,13 +215,9 @@ jobs:
       type: DefaultInterpreter
       commands: |
         set -e
-        BUILD_DIR="/tmp/exyone-blog-build"
         DEPLOY_DIR="/tmp/gitlink-deploy"
-        # Shell Executor runs a non-interactive shell without HOME, which git
-        # needs for config/credentials. Point it at a writable directory.
         export HOME="${HOME:-/tmp/onedev-home}"
         mkdir -p "$HOME"
-        cd "$BUILD_DIR"
         rm -rf "$DEPLOY_DIR"
         git clone "@secret:gitlink-pages-repo-url@" "$DEPLOY_DIR" --depth 1
         find "$DEPLOY_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
@@ -193,30 +229,36 @@ jobs:
         git commit -m "Deploy: Update site from OneDev build #@build_number@"
         git push -f origin main
     useTTY: false
-    condition: ALWAYS
-    optional: true
+    condition: SUCCESSFUL
+    optional: false
 
   triggers:
   - type: BranchUpdateTrigger
     branches: main
     userMatch: anyone
 
+  jobDependencies:
+  - jobName: Build
+    requireSuccessful: true
+    artifacts: '**'
+
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
-  timeout: 3600
+  timeout: 1800
 
-# ---------------------------------------------------------------------------
-#  BACKUP — push mirror to Codeberg on main/tag
-# ---------------------------------------------------------------------------
+
+# Backup: push source to Codeberg. It does not consume _site and runs independently of Build.
 - name: Backup to Codeberg
   steps:
+
   - type: CheckoutStep
     name: checkout
     cloneCredential:
       type: DefaultCredential
     condition: SUCCESSFUL
     optional: false
+
   - type: CommandStep
     name: push to codeberg
     runInContainer: false
@@ -246,3 +288,51 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 600
+
+
+# Sync: push source to GitHub. It does not depend on Build.
+# Job-level retries cover DNS resolution failures, connection timeouts, and other
+# network errors commonly seen when accessing GitHub from mainland China.
+# maxRetries: 100; retryDelay: 60s; timeout: 300s per attempt.
+# Retry applies to the whole job; git push --force is idempotent.
+- name: Sync to GitHub
+  steps:
+
+  - type: CheckoutStep
+    name: checkout
+    cloneCredential:
+      type: DefaultCredential
+    condition: SUCCESSFUL
+    optional: false
+
+  - type: CommandStep
+    name: push source to github
+    runInContainer: false
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        set -e
+        export HOME="${HOME:-/tmp/onedev-home}"
+        mkdir -p "$HOME"
+        git config --global user.email "[email protected]"
+        git config --global user.name "OneDev CI"
+        git remote remove github 2>/dev/null || true
+        git remote add github '@secret:github-sync-repo-url@'
+        # Push source only: branches and tags, not _site or build artifacts.
+        git push github --all --force
+        git push github --tags --force
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+
+  triggers:
+  - type: BranchUpdateTrigger
+    branches: main
+    userMatch: anyone
+  - type: TagCreateTrigger
+
+  # Retry common network errors when accessing GitHub from mainland China.
+  retryCondition: '"Error Message" contains "Could not resolve host" or "Error Message" contains "Connection timed out" or "Error Message" contains "Failed to connect" or "Error Message" contains "unable to access" or "Error Message" contains "Connection reset"'
+  maxRetries: 100
+  retryDelay: 60
+  timeout: 300

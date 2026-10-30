@@ -33,20 +33,6 @@ jobs:
           # If using the 'assets' git submodule from Chirpy Starter, uncomment above
           # (See: https://github.com/cotes2020/chirpy-starter/tree/main/assets)
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      # Compiles _frontend/src/*.ts into assets/js/bundle.js, then generates the
-      # friends page tree. All of it must run before Jekyll so a stale
-      # committed artifact can never ship.
-      - name: Build front-end assets
-        run: |
-          npm install
-          npm run typecheck
-          npm run build:site
-
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -59,10 +45,10 @@ jobs:
           JEKYLL_ENV: "production"
           BUNDLE_WITHOUT: ""
 
-      - name: Verify build output
+      - name: Verify committed build output
         run: |
           test -f _site/friends/index.html
-          test -f _site/assets/js/bundle.js
+          test -f _site/assets/js/chirpy-enhance.min.js
 
       - name: Publish site to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4

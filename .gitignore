@@ -18,8 +18,11 @@ package-lock.json
 # Build-time script output (compiled from _frontend/pages before running)
 .cache
 
-# Generated Jekyll page source (from _frontend/pages/friends.ts before jekyll build)
-/friends/
+# Generated Jekyll page source from _frontend/pages/friends.ts (`npm run pages`).
+# Deliberately NOT ignored: CI no longer runs Node.js, so this committed tree is
+# what Jekyll copies into _site/friends/. Re-run the generator locally whenever
+# _frontend/pages/friends.ts changes.
+# See also: assets/js/chirpy-enhance.min.js
 
 # IDE configurations
 .idea

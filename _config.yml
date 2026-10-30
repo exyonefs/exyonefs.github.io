@@ -256,6 +256,12 @@ compress_html:
   ignore:
     envs: [development]
 
+# Jekyll skips underscore-prefixed paths by default; force the platform
+# header rules file through so it lands at the root of _site for Cloudflare
+# Pages / Netlify (see `_headers` and netlify.toml).
+include:
+  - _headers
+
 exclude:
   - "*.gem"
   - "*.gemspec"
@@ -267,7 +273,7 @@ exclude:
   - "*.config.js"
   - "package*.json"
   # TypeScript sources + toolchain for the front-end bundle; only the compiled
-  # output in assets/js/bundle.js is published.
+  # output in assets/js/chirpy-enhance.min.js is published.
   - _frontend
   - node_modules
   - tsconfig.json
@@ -281,9 +287,12 @@ jekyll-archives:
     tag: /tags/:name/
     category: /categories/:name/
 
-# SiteEnhance front-end modules (_includes/metadata-hook.html)
-# Every key is optional; defaults live in _frontend/src/core.ts.
-site_enhance:
+# ChirpyEnhance front-end modules.
+# The whole block below is serialised verbatim onto the script tag
+# (`data-config`, one line in _includes/metadata-hook.html); the script
+# camelCases the snake_case keys itself, and every key is optional - defaults
+# live in _frontend/src/core.ts.
+chirpy_enhance:
   # Simplified <-> Traditional Chinese toggle, Alt+Z or context menu.
   zh_convert:
     enabled: true
@@ -305,10 +314,15 @@ site_enhance:
   quotes:
     enabled: true
     endpoints:
-      - "https://htk.exyon.ee/api/quotes"
+      - "https://quot.exyon.ee/api/quotes"
 
   # Reading progress bar.
   reading:
+    enabled: true
+
+  # Particle network backdrop on #particles-bg. The context menu can switch it
+  # off at runtime; that choice is stored per browser and wins over this value.
+  particles:
     enabled: true
 
   # Custom context menu.

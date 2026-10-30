@@ -1,39 +1,74 @@
-/*
- * Particle Network — simplified, still theme-aware.
+/*!
+ * SiteEnhance · particle network background
  *
- * Colors are read from --pn-* CSS custom properties on the canvas.
- * A MutationObserver refreshes the palette when Chirpy flips
- * data-bs-theme on <html>.
+ * A canvas backdrop of drifting dots joined by hairlines. The module owns its
+ * whole lifecycle so the effect can be switched off from the context menu; the
+ * choice is persisted and re-applied on the next page load.
+ *
+ * Visuals live in `styles.ts` (the `particles` layer): the palette is read back
+ * from the canvas' computed --pn-* custom properties, so a theme flip only
+ * needs a re-read instead of a re-render.
  */
-(function initParticles(): void {
-  const isMobile = matchMedia('(max-width: 768px), (pointer: coarse)').matches;
-  if (isMobile) return;
+import { Enhance } from './core';
+import type { ParticlesModule } from './types';
 
-  const canvas = document.createElement('canvas');
-  canvas.id = 'particles-bg';
-  canvas.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(canvas);
+const CONFIG = Enhance.CONFIG.particles;
+const storage = Enhance.storage;
+const Toast = Enhance.Toast;
+const bus = Enhance.bus;
 
-  const ctxOrNull = canvas.getContext('2d');
-  if (!ctxOrNull) return;
-  const ctx: CanvasRenderingContext2D = ctxOrNull;
+const STORAGE_KEY = 'enhance:particles';
 
-  /* ---------------- Tunables ---------------- */
-  const CFG = {
-    density: 20000,
-    maxParticles: 44,
-    minParticles: 18,
-    speed: 0.12,
-    linkDist: 120,
-    mouseLinkDist: 145,
-    mouseRadius: 110,
-    mouseForce: 0.7,
-    dotRadius: 1.6,
-    accentEvery: 8
-  };
+/* ---------------- Tunables ---------------- */
+const CFG = {
+  density: 20000,
+  maxParticles: 44,
+  minParticles: 18,
+  speed: 0.12,
+  linkDist: 120,
+  mouseLinkDist: 145,
+  mouseRadius: 110,
+  mouseForce: 0.7,
+  dotRadius: 1.6,
+  accentEvery: 8
+};
 
-  const BREATH_SPEED = 0.0006;
-  const BREATH_DEPTH = 0.18;
+const BREATH_SPEED = 0.0006;
+const BREATH_DEPTH = 0.18;
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  r: number;
+  accent: boolean;
+}
+
+const Particles: ParticlesModule | null = (function (): ParticlesModule | null {
+  if (CONFIG.enabled === false) return null;
+
+  /* Desktop-only decoration: narrow and touch viewports scroll a small area,
+     and the stylesheet hides the canvas there anyway. */
+  const allowed = !matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+  const supported = allowed && supportsCanvas();
+
+  function supportsCanvas(): boolean {
+    const probe = document.createElement('canvas');
+    return typeof probe.getContext === 'function' && !!probe.getContext('2d');
+  }
+
+  /* Stored preference wins; otherwise the YAML/config default applies. */
+  function readPreference(): boolean {
+    const saved = storage.get(STORAGE_KEY, '');
+    if (saved === 'on') return true;
+    if (saved === 'off') return false;
+    return CONFIG.enabled !== false;
+  }
+
+  let enabled = readPreference();
+
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
   /* ---------------- Palette (theme-aware) ---------------- */
   const palette = {
@@ -46,7 +81,19 @@
     mouseAlpha: 0.30
   };
 
+  let canvas: HTMLCanvasElement | null = null;
+  let ctx: CanvasRenderingContext2D | null = null;
+  let particles: Particle[] = [];
+  let W = 0;
+  let H = 0;
+  let dpr = 1;
+  let mouseX: number | null = null;
+  let mouseY: number | null = null;
+  let rafId: number | null = null;
+  let observer: MutationObserver | null = null;
+
   function readPalette(): void {
+    if (!canvas) return;
     const cs = getComputedStyle(canvas);
     const val = function (name: string, fallback: string): string {
       return cs.getPropertyValue(name).trim() || fallback;
@@ -61,26 +108,9 @@
     palette.mouseAlpha = parseFloat(val('--pn-mouse-alpha', '0.30')) || 0.30;
   }
 
-  /* ---------------- Canvas & particles ---------------- */
-  interface Particle {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    r: number;
-    accent: boolean;
-  }
-
-  let W = 0;
-  let H = 0;
-  let dpr = 1;
-  let particles: Particle[] = [];
-  let mouseX: number | null = null;
-  let mouseY: number | null = null;
-
-  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-
   function resize(): void {
+    if (!canvas || !ctx) return;
+
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth;
     H = window.innerHeight;
@@ -137,10 +167,13 @@
   }
 
   function draw(now = 0): void {
-    ctx.clearRect(0, 0, W, H);
+    const c = ctx;
+    if (!c) return;
+
+    c.clearRect(0, 0, W, H);
 
     const breath = 1 + BREATH_DEPTH * Math.sin(now * BREATH_SPEED);
-    ctx.lineWidth = 1;
+    c.lineWidth = 1;
 
     const linkDist = CFG.linkDist;
     const link2 = linkDist * linkDist;
@@ -159,12 +192,12 @@
           const t = 1 - Math.sqrt(d2) / linkDist;
           const alpha = palette.lineAlpha * (0.25 + 0.75 * t) * breath;
 
-          ctx.strokeStyle = `rgba(${palette.line},${alpha.toFixed(3)})`;
-          ctx.lineWidth = 0.6 + 0.7 * t;
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
+          c.strokeStyle = `rgba(${palette.line},${alpha.toFixed(3)})`;
+          c.lineWidth = 0.6 + 0.7 * t;
+          c.beginPath();
+          c.moveTo(a.x, a.y);
+          c.lineTo(b.x, b.y);
+          c.stroke();
         }
       }
     }
@@ -174,7 +207,7 @@
       const md = CFG.mouseLinkDist;
       const md2 = md * md;
 
-      ctx.lineWidth = 1;
+      c.lineWidth = 1;
 
       for (let k = 0; k < particles.length; k++) {
         const p = particles[k];
@@ -186,11 +219,11 @@
           const t = 1 - Math.sqrt(d2) / md;
           const alpha = palette.mouseAlpha * (0.2 + 0.8 * t);
 
-          ctx.strokeStyle = `rgba(${palette.mouse},${alpha.toFixed(3)})`;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(mouseX, mouseY);
-          ctx.stroke();
+          c.strokeStyle = `rgba(${palette.mouse},${alpha.toFixed(3)})`;
+          c.beginPath();
+          c.moveTo(p.x, p.y);
+          c.lineTo(mouseX, mouseY);
+          c.stroke();
         }
       }
     }
@@ -203,15 +236,14 @@
       if (alpha > 1) alpha = 1;
 
       const r = p.r * (p.accent ? 1.15 : 1);
-      ctx.fillStyle = `rgba(${p.accent ? palette.accent : palette.dot},${alpha.toFixed(3)})`;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = `rgba(${p.accent ? palette.accent : palette.dot},${alpha.toFixed(3)})`;
+      c.beginPath();
+      c.arc(p.x, p.y, r, 0, Math.PI * 2);
+      c.fill();
     }
   }
 
   /* ---------------- Main loop ---------------- */
-  let rafId: number | null = null;
 
   function loop(now: number): void {
     update();
@@ -232,49 +264,137 @@
     }
   }
 
-  /* ---------------- Theme ---------------- */
-  new MutationObserver(function () {
-    readPalette();
-    if (rafId === null && particles.length) draw(0);
-  }).observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-bs-theme']
-  });
-
   /* ---------------- Events ---------------- */
-  window.addEventListener('resize', resize);
 
-  window.addEventListener('pointermove', function (e: PointerEvent) {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-  }, { passive: true });
+  function onResize(): void {
+    resize();
+    if (rafId === null) draw(0);
+  }
 
-  window.addEventListener('pointerleave', function () {
+  function onPointerMove(event: PointerEvent): void {
+    mouseX = event.clientX;
+    mouseY = event.clientY;
+  }
+
+  function onPointerLeave(): void {
     mouseX = null;
     mouseY = null;
-  });
+  }
 
-  document.addEventListener('visibilitychange', function () {
+  function onVisibilityChange(): void {
     if (document.hidden) stop();
-    else start();
-  });
+    else if (enabled) start();
+  }
 
-  reduceMotion.addEventListener('change', function () {
+  function onMotionChange(): void {
     if (reduceMotion.matches) {
       stop();
       draw(0);
-    } else {
+    } else if (enabled) {
       start();
     }
-  });
-
-  /* ---------------- Boot ---------------- */
-  readPalette();
-  resize();
-
-  if (reduceMotion.matches) {
-    draw(0);
-  } else {
-    start();
   }
+
+  /* ---------------- Lifecycle ---------------- */
+
+  function mount(): void {
+    if (!supported || canvas) return;
+
+    const created = document.createElement('canvas');
+    created.id = 'particles-bg';
+    created.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(created);
+
+    const context = created.getContext('2d');
+    if (!context) {
+      created.remove();
+      return;
+    }
+
+    canvas = created;
+    ctx = context;
+
+    readPalette();
+    resize();
+
+    window.addEventListener('resize', onResize);
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerleave', onPointerLeave);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    reduceMotion.addEventListener('change', onMotionChange);
+
+    /* Palette lives in CSS, so a theme flip only needs a fresh read. */
+    observer = new MutationObserver(function () {
+      readPalette();
+      if (rafId === null && particles.length) draw(0);
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-bs-theme']
+    });
+
+    if (reduceMotion.matches) draw(0);
+    else start();
+  }
+
+  function unmount(): void {
+    stop();
+
+    if (observer) {
+      observer.disconnect();
+      observer = null;
+    }
+
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerleave', onPointerLeave);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    reduceMotion.removeEventListener('change', onMotionChange);
+
+    if (canvas) canvas.remove();
+
+    canvas = null;
+    ctx = null;
+    particles = [];
+    mouseX = null;
+    mouseY = null;
+  }
+
+  function setEnabled(next: boolean): boolean {
+    if (!supported) {
+      Toast.warn('当前设备不支持粒子背景');
+      return false;
+    }
+
+    enabled = next;
+    storage.set(STORAGE_KEY, next ? 'on' : 'off');
+
+    if (next) mount();
+    else unmount();
+
+    bus.emit('particles:changed', { enabled: next });
+    return next;
+  }
+
+  return {
+    /* Safe to call repeatedly (e.g. after PJAX navigation). */
+    init: function (): void {
+      if (enabled) mount();
+      else unmount();
+    },
+    toggle: function (): boolean {
+      const next = setEnabled(!enabled);
+      if (supported) Toast.show('粒子特效：' + (next ? '开' : '关'), 'info', 1200);
+      return next;
+    },
+    setEnabled: setEnabled,
+    isEnabled: function () { return enabled && supported; },
+    isVisible: function () { return !!canvas; },
+    label: function () {
+      if (!supported) return '不支持';
+      return enabled ? '开' : '关';
+    }
+  };
 })();
+
+Enhance.register('Particles', Particles);

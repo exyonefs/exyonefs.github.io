@@ -36,6 +36,9 @@ export interface SiteEnhanceConfig {
     enabled: boolean;
     ease: number;
   };
+  particles: {
+    enabled: boolean;
+  };
   menu: {
     enabled: boolean;
     submenu: boolean;
@@ -157,6 +160,16 @@ export interface ReadingModule {
   isEnabled(): boolean;
 }
 
+export interface ParticlesModule {
+  init(): void;
+  toggle(): boolean;
+  setEnabled(enabled: boolean): boolean;
+  isEnabled(): boolean;
+  isVisible(): boolean;
+  /* '开' / '关', or '不支持' where the backdrop cannot run at all. */
+  label(): string;
+}
+
 export type ClickMode = 'word' | 'ripple' | 'confetti' | 'none';
 
 export interface ClickEffectModule {
@@ -231,6 +244,7 @@ export interface EnhanceApi {
   Music?: MusicModule | null;
   Quotes?: QuotesModule | null;
   Reading?: ReadingModule | null;
+  Particles?: ParticlesModule | null;
   ClickEffect?: ClickEffectModule | null;
   ContextMenu?: ContextMenuModule | null;
   Shortcuts?: ShortcutsModule | null;
@@ -244,6 +258,7 @@ export interface SiteEnhanceApi {
   Music?: MusicModule | null;
   Quotes?: QuotesModule | null;
   Reading?: ReadingModule | null;
+  Particles?: ParticlesModule | null;
   ClickEffect?: ClickEffectModule | null;
   ContextMenu?: ContextMenuModule | null;
   Shortcuts?: ShortcutsModule | null;
@@ -251,8 +266,9 @@ export interface SiteEnhanceApi {
 
 declare global {
   interface Window {
-    /* Inline configuration emitted by `_includes/metadata-hook.html`. */
-    SITE_ENHANCE?: unknown;
+    /* Optional override for the config the markup carries on the script tag
+       (`data-config`, written by `_includes/metadata-hook.html`). */
+    CHIRPY_ENHANCE?: unknown;
     Enhance?: EnhanceApi;
     SiteEnhance?: SiteEnhanceApi;
   }

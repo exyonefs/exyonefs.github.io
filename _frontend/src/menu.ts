@@ -254,6 +254,7 @@ const ContextMenu: ContextMenuModule | null = (function (): ContextMenuModule | 
     /* Site toggles ------------------------------------------------------- */
     'zh-convert': function () { if (Enhance.ZhConvert) Enhance.ZhConvert.toggle(); },
     'reading-toggle': function () { if (Enhance.Reading) Enhance.Reading.toggle(); },
+    'particles-toggle': function () { if (Enhance.Particles) Enhance.Particles.toggle(); },
     'click-fx-cycle': function () { if (Enhance.ClickEffect) Enhance.ClickEffect.cycle(); },
     'music-toggle': function () { if (Enhance.Music) Enhance.Music.toggle(); },
     'quotes-toggle': function () { if (Enhance.Quotes) Enhance.Quotes.toggle(); },
@@ -422,6 +423,12 @@ const ContextMenu: ContextMenuModule | null = (function (): ContextMenuModule | 
               label: '点击特效',
               action: 'click-fx-cycle',
               state: stateLabel(() => Enhance.ClickEffect, (mod) => mod.label())
+            },
+            {
+              icon: 'fa-atom',
+              label: '粒子特效',
+              action: 'particles-toggle',
+              state: stateLabel(() => Enhance.Particles, (mod) => mod.label())
             },
             {
               icon: 'fa-music',
