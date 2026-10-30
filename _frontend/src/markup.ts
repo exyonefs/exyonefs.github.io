@@ -86,7 +86,7 @@ const MARKUP = `
 /* Warm up the origins the modules fetch from (Howler, OpenCC, the quote API). */
 const HINTS: Array<{ rel: string; href: string; cross: boolean }> = [
   { rel: 'preconnect', href: 'https://cdn.jsdelivr.net', cross: true },
-  { rel: 'preconnect', href: 'https://htk.exyon.ee', cross: true },
+  { rel: 'preconnect', href: 'https://quot.exyon.ee', cross: true },
   { rel: 'dns-prefetch', href: 'https://unpkg.com', cross: false }
 ];
 

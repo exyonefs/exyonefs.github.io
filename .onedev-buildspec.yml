@@ -1,14 +1,11 @@
 version: 47
 
-# Build is dependency-only and reused per commit.
-# Deploy jobs are independent and consume published _site artifacts.
-# GitHub Sync does not consume artifacts; it checks out and pushes source.
-# Job-level retries handle common network failures when accessing GitHub from mainland China.
+# Build once into /tmp/exyone-blog-build/_site and deploy that same directory
+# everywhere. Deploy steps are optional, so one failing target blocks nothing.
 
 jobs:
 
-# Build: artifact producer with no trigger. It is started by downstream jobs and reused for the same commit.
-- name: Build
+- name: Build & Deploy
   steps:
 
   - type: CheckoutStep
@@ -31,8 +28,6 @@ jobs:
         cp -r . "$BUILD_DIR/"
         cd "$BUILD_DIR"
         export PATH="/usr/local/bin:$PATH"
-        ruby --version
-        bundle --version
         export BUNDLE_JOBS=4
         export BUNDLE_RETRY=3
         bundle install
@@ -47,43 +42,40 @@ jobs:
       type: DefaultInterpreter
       commands: |
         set -e
-        cd /tmp/exyone-blog-build
+        BUILD_DIR="/tmp/exyone-blog-build"
+        cd "$BUILD_DIR"
         export JEKYLL_ENV="production"
+
+        # Rebuild _frontend assets so stale committed output cannot ship.
+        if [ -f package.json ]; then
+          npm install
+          npm run typecheck
+          npm run build
+        fi
+
         bundle exec jekyll build
-        if [ ! -d "_site" ]; then
-          echo "Build failed! _site directory not found."
-          exit 1
-        fi
-        if [ ! -f "_site/friends/index.html" ]; then
-          echo "Build failed! _site/friends/index.html not found."
-          exit 1
-        fi
-        if [ ! -f "_site/assets/js/chirpy-enhance.min.js" ]; then
-          echo "Build failed! _site/assets/js/chirpy-enhance.min.js not found."
-          exit 1
-        fi
-        echo "Build successful! _site size:"
+        for f in _site/friends/index.html _site/assets/js/chirpy-enhance.min.js; do
+          if [ ! -f "$f" ]; then
+            echo "Build failed! $f not found."
+            exit 1
+          fi
+        done
         du -sh _site/
     useTTY: false
     condition: SUCCESSFUL
     optional: false
 
-  # Publish _site/** for downstream jobs; '**' preserves the _site/ directory structure.
   - !PublishArtifactStep
     name: publish site
     artifacts: '_site/**'
     condition: SUCCESSFUL
     optional: false
 
-  retryCondition: never
-  maxRetries: 3
-  retryDelay: 30
-  timeout: 3600
-
-
-# Deploy: Cloudflare Pages
-- name: Deploy to Cloudflare Pages
-  steps:
+  - type: SetBuildVersionStep
+    name: set build version
+    buildVersion: '@build_number@'
+    condition: SUCCESSFUL
+    optional: false
 
   - type: CommandStep
     name: deploy to cloudflare pages
@@ -92,6 +84,7 @@ jobs:
       type: DefaultInterpreter
       commands: |
         set -e
+        cd /tmp/exyone-blog-build
         export PATH="/usr/local/bin:$(npm root -g):$PATH"
         if ! command -v wrangler &> /dev/null; then
           npm install -g wrangler
@@ -103,28 +96,8 @@ jobs:
           --branch main \
           --commit-dirty=true
     useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-
-  triggers:
-  - type: BranchUpdateTrigger
-    branches: main
-    userMatch: anyone
-
-  jobDependencies:
-  - jobName: Build
-    requireSuccessful: true
-    artifacts: '**'
-
-  retryCondition: never
-  maxRetries: 3
-  retryDelay: 30
-  timeout: 1800
-
-
-# Deploy: Netlify
-- name: Deploy to Netlify
-  steps:
+    condition: ALWAYS
+    optional: true
 
   - type: CommandStep
     name: deploy to netlify
@@ -133,35 +106,42 @@ jobs:
       type: DefaultInterpreter
       commands: |
         set -e
+        cd /tmp/exyone-blog-build
         export PATH="/usr/local/bin:$(npm root -g):$PATH"
+        NETLIFY_SITE_ID="@secret:netlify-site-id@"
+        NETLIFY_TOKEN="@secret:netlify-auth-token@"
         npx netlify-cli deploy --prod \
           --dir _site \
-          --site "@secret:netlify-site-id@" \
-          --auth "@secret:netlify-auth-token@" \
-          --message "OneDev build #@build_number@"
+          --site "$NETLIFY_SITE_ID" \
+          --auth "$NETLIFY_TOKEN" \
+          --message "OneDev #@build_number@"
     useTTY: false
-    condition: SUCCESSFUL
-    optional: false
+    condition: ALWAYS
+    optional: true
 
-  triggers:
-  - type: BranchUpdateTrigger
-    branches: main
-    userMatch: anyone
-
-  jobDependencies:
-  - jobName: Build
-    requireSuccessful: true
-    artifacts: '**'
-
-  retryCondition: never
-  maxRetries: 3
-  retryDelay: 30
-  timeout: 1800
-
-
-# Deploy: Codeberg Pages (git push)
-- name: Deploy to Codeberg Pages
-  steps:
+  # Register _site as a git repo after CF/Netlify so they never upload .git.
+  - type: CommandStep
+    name: init artifact git repo
+    runInContainer: false
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        set -e
+        export HOME="${HOME:-/tmp/onedev-home}"
+        mkdir -p "$HOME"
+        cd /tmp/exyone-blog-build/_site
+        rm -rf .git
+        git init
+        git checkout -b main
+        git config user.email "[email protected]"
+        git config user.name "OneDev CI"
+        # Codeberg Pages custom domain; a dotfile for the other hosts.
+        echo "exyone.de5.net" > .domains
+        git add -A
+        git commit -m "Deploy: Update site from OneDev build #@build_number@"
+    useTTY: false
+    condition: ALWAYS
+    optional: true
 
   - type: CommandStep
     name: deploy to codeberg pages
@@ -170,43 +150,24 @@ jobs:
       type: DefaultInterpreter
       commands: |
         set -e
-        DEPLOY_DIR="/tmp/codeberg-deploy"
         export HOME="${HOME:-/tmp/onedev-home}"
         mkdir -p "$HOME"
-        rm -rf "$DEPLOY_DIR"
-        git clone "@secret:codeberg-pages-repo-url@" "$DEPLOY_DIR" --depth 1
-        find "$DEPLOY_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-        cp -r _site/* "$DEPLOY_DIR/"
-        cd "$DEPLOY_DIR"
-        git config user.email "[email protected]"
-        git config user.name "OneDev CI"
-        echo "exyone.de5.net" > .domains
-        git add .
-        git commit -m "Deploy: Update site from OneDev build #@build_number@"
-        git push -f origin main
+        REPO_URL='@secret:codeberg-pages-repo-url@'
+        # Logs mask the secret as *****, so require a URL scheme up front.
+        case "$REPO_URL" in
+          *://*) ;;
+          *)
+            echo "codeberg-pages-repo-url must be a full URL with a scheme, got '$REPO_URL'"
+            exit 1
+            ;;
+        esac
+        cd /tmp/exyone-blog-build/_site
+        git remote remove codeberg 2>/dev/null || true
+        git remote add codeberg "$REPO_URL"
+        git push --force codeberg main:main
     useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-
-  triggers:
-  - type: BranchUpdateTrigger
-    branches: main
-    userMatch: anyone
-
-  jobDependencies:
-  - jobName: Build
-    requireSuccessful: true
-    artifacts: '**'
-
-  retryCondition: never
-  maxRetries: 3
-  retryDelay: 30
-  timeout: 1800
-
-
-# Deploy: GitLink Pages (git push)
-- name: Deploy to GitLink Pages
-  steps:
+    condition: ALWAYS
+    optional: true
 
   - type: CommandStep
     name: deploy to gitlink pages
@@ -215,41 +176,36 @@ jobs:
       type: DefaultInterpreter
       commands: |
         set -e
-        DEPLOY_DIR="/tmp/gitlink-deploy"
         export HOME="${HOME:-/tmp/onedev-home}"
         mkdir -p "$HOME"
-        rm -rf "$DEPLOY_DIR"
-        git clone "@secret:gitlink-pages-repo-url@" "$DEPLOY_DIR" --depth 1
-        find "$DEPLOY_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-        cp -r _site/* "$DEPLOY_DIR/"
-        cd "$DEPLOY_DIR"
-        git config user.email "[email protected]"
-        git config user.name "OneDev CI"
-        git add .
-        git commit -m "Deploy: Update site from OneDev build #@build_number@"
-        git push -f origin main
+        REPO_URL='@secret:gitlink-pages-repo-url@'
+        case "$REPO_URL" in
+          *://*) ;;
+          *)
+            echo "gitlink-pages-repo-url must be a full URL with a scheme, got '$REPO_URL'"
+            exit 1
+            ;;
+        esac
+        cd /tmp/exyone-blog-build/_site
+        git remote remove gitlink 2>/dev/null || true
+        git remote add gitlink "$REPO_URL"
+        git push --force gitlink main:main
     useTTY: false
-    condition: SUCCESSFUL
-    optional: false
+    condition: ALWAYS
+    optional: true
 
   triggers:
   - type: BranchUpdateTrigger
     branches: main
     userMatch: anyone
 
-  jobDependencies:
-  - jobName: Build
-    requireSuccessful: true
-    artifacts: '**'
-
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
-  timeout: 1800
+  timeout: 3600
 
 
-# Backup: push source to Codeberg. It does not consume _site and runs independently of Build.
-- name: Backup to Codeberg
+- name: Sync to Codeberg
   steps:
 
   - type: CheckoutStep
@@ -260,7 +216,7 @@ jobs:
     optional: false
 
   - type: CommandStep
-    name: push to codeberg
+    name: push source to codeberg
     runInContainer: false
     interpreter:
       type: DefaultInterpreter
@@ -271,7 +227,7 @@ jobs:
         git config --global user.email "[email protected]"
         git config --global user.name "OneDev CI"
         git remote remove codeberg 2>/dev/null || true
-        git remote add codeberg '@secret:codeberg-backup-repo-url@'
+        git remote add codeberg '@secret:codeberg-sync-repo-url@'
         git push codeberg --all --force
         git push codeberg --tags --force
     useTTY: false
@@ -290,11 +246,7 @@ jobs:
   timeout: 600
 
 
-# Sync: push source to GitHub. It does not depend on Build.
-# Job-level retries cover DNS resolution failures, connection timeouts, and other
-# network errors commonly seen when accessing GitHub from mainland China.
-# maxRetries: 100; retryDelay: 60s; timeout: 300s per attempt.
-# Retry applies to the whole job; git push --force is idempotent.
+# Retry on network errors when reaching GitHub from mainland China.
 - name: Sync to GitHub
   steps:
 
@@ -316,9 +268,18 @@ jobs:
         mkdir -p "$HOME"
         git config --global user.email "[email protected]"
         git config --global user.name "OneDev CI"
+        REPO_URL='@secret:github-sync-repo-url@'
+        # Secrets are masked as ***** in logs, so surface the shape instead.
+        case "$REPO_URL" in
+          *://*) echo "github-sync-repo-url: scheme ok, length ${#REPO_URL}" ;;
+          *)
+            echo "github-sync-repo-url has no URL scheme; git treats it as a local path"
+            exit 1
+            ;;
+        esac
         git remote remove github 2>/dev/null || true
-        git remote add github '@secret:github-sync-repo-url@'
-        # Push source only: branches and tags, not _site or build artifacts.
+        git remote add github "$REPO_URL"
+        # Source only: branches and tags, not _site.
         git push github --all --force
         git push github --tags --force
     useTTY: false
@@ -331,8 +292,8 @@ jobs:
     userMatch: anyone
   - type: TagCreateTrigger
 
-  # Retry common network errors when accessing GitHub from mainland China.
-  retryCondition: '"Log" contains "Could not resolve host" or "Log" contains "Connection timed out" or "Log" contains "Failed to connect" or "Log" contains "unable to access" or "Log" contains "Connection reset"'
+  # OneDev grammar: "Log" contains "<regex>", joined by lowercase or/and.
+  retryCondition: '"Log" contains "Could not resolve host" or "Log" contains "Connection timed out" or "Log" contains "Failed to connect" or "Log" contains "Connection reset" or "Log" contains "early EOF"'
   maxRetries: 100
   retryDelay: 60
   timeout: 300
