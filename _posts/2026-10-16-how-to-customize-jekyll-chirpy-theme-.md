@@ -6,13 +6,21 @@ tags: [Jekyll, Chirpy, SSG, 前端]
 image: https://chirpy-img.netlify.app/commons/devices-mockup.png
 ---
 
-更新：现在你也可以直接引用 `<script defer src="{{ 'https://exyon.ee/assets/js/chirpy-enhance.min.js' | relative_url }}" data-config="{{ site.chirpy_enhance | jsonify | escape }}"></script>` 来使用这个增强脚本了，我为其添加了跨源访问。
-
 如果需要文中的源代码，可以直接访问 [GitHub 仓库](https://github.com/exyonefs/exyonefs.github.io) 获取。
 
 先插一句题外话。细心的朋友可能发现，我把 GitHub 用户名从 `exyone-js` 改成了 `exyonefs`。原因说来简单：以 JavaScript 命名的项目实在烂大街，`F#` 反而更有新鲜感；况且在 GitHub Pages 的域名里，`exyonefs.github.io` 比 `exyone-js.github.io` 更紧凑，也更好看。权衡之下就换了。
 
 回归正题。本文的全部操作以 **Chirpy 7.6** 为准，本仓库的 `Gemfile` 里锁的正是 `~> 7.6`。旧版本的主题文件、暗色信号与预留钩子都有差别，文中许多步骤无法照搬，敬请知悉。
+
+更新：现在你也可以在 `metadata-hook.html` 直接引用
+
+{% raw %}
+```js
+<script defer src="{{ 'https://exyon.ee/assets/js/chirpy-enhance.min.js' | relative_url }}" data-config="{{ site.chirpy_enhance | jsonify | escape }}"></script>
+```
+{% endraw %}
+
+来本站同款的增强右键菜单了，我为其添加了跨源访问。
 
 ## 注入接口：同名覆盖与两个官方钩子
 
