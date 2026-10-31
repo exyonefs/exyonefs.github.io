@@ -156,7 +156,7 @@ git push deploy main
 
 ### 坑一：官方 Starter 没法用
 
-> 官方文档中的 Netlify 部署说明已经比较陈旧，提供的 Starter 模板也无法直接跑通——问题主要出在 esbuild 打包 `@waline/vercel` 时会与 ThinkJS 的动态 `require` 产生冲突。因此我自行整理了一套可用的部署配置：将 `@waline/vercel` 标记为 `external_node_modules`，避免 esbuild 将其打包；同时把评论函数超时设为 26s，以覆盖邮件、Akismet 和数据库冷启动；并将 `@waline/vercel` 从 `^1.31.9` 升级到 `^1.41.6`。
+官方文档中的 Netlify 部署说明已经比较陈旧，提供的 Starter 模板也无法直接跑通——问题主要出在 esbuild 打包 `@waline/vercel` 时会与 ThinkJS 的动态 `require` 产生冲突。因此我自行整理了一套可用的部署配置：将 `@waline/vercel` 标记为 `external_node_modules`，避免 esbuild 将其打包；同时把评论函数超时设为 26s，以覆盖邮件、Akismet 和数据库冷启动；并将 `@waline/vercel` 从 `^1.31.9` 升级到 `^1.41.6`。
 
 > Starter 仓库：<https://github.com/exyone-js/waline-netlify>
 

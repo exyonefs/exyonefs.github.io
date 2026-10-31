@@ -5,9 +5,9 @@ categories: [项目分享]
 tags: [开源, Waline, Netlify, GitHub]
 ---
 
-9 月那篇[博客搬家记录](/posts/blog-migration-and-waline-comments/)的结尾留了个尾巴：文中的 Waline 改造后来又被我重新写了一遍，篇幅所限没有展开，只留了一句「欢迎访问仓库」。这篇文章把那件事补上——我用一套自定义存储适配器替换了 `@waline/vercel` 的「单文件 CSV」实现，把评论数据以 **CSV 分片文件**的形式存放在 GitHub 仓库里。改造只换底层存储，上层业务逻辑零改动。
+9 月那篇[博客搬家记录](/posts/blog-migration-and-waline-comments/)的结尾留了个尾巴：文中的 Waline 改造后来又被我重新写了一遍，篇幅所限没有展开，只留了一句「欢迎访问仓库」。这篇文章把这件事补上：我用一套自定义存储适配器替换了 `@waline/vercel` 的「单文件 CSV」实现，把评论数据以 **CSV 分片文件**的形式存放在 GitHub 仓库里。改造只换底层存储，上层业务逻辑零改动。
 
-不用数据库、不用对象存储，换来的是很实际的一点：**备份即仓库备份**，每一次数据变更都留有 git 历史。下面按「为什么改、改了之后什么样、怎么部署、有什么坑」的顺序说明。
+不用数据库，也不用对象存储，换来的好处很实际：**备份即仓库备份**，每一次数据变更都留有 git 历史。下面按「为什么改、改完是什么样、怎么部署、有哪些坑」的顺序来说。
 
 ## 为什么要换掉单文件 CSV
 
@@ -29,7 +29,7 @@ tags: [开源, Waline, Netlify, GitHub]
 | 一次列表页完整渲染（5 万条） | 4547.9 ms · 下载 91.15 MB | **1.76 ms · 下载 0 B** |
 | 冷启动首次查询 | 成本随全站数据量增长 | **4 次 API 调用 · 167.6 KB · 75.8 ms** |
 
-「下载 0 B」不是夸张：分片已经在内存里，查询不再碰网络。而冷启动之所以快，是因为它只读三张表的 manifest，再加上命中文章的那一两个分片，成本与全站评论总量基本无关。
+「下载 0 B」不是夸张：分片已经在内存里，查询不再碰网络。冷启动之所以快，是因为它只读三张表的 manifest，再加上命中文章的那一两个分片，成本与全站评论总量基本无关。
 
 **适合**：个人博客与中小站点，评论量在几十万条以内，希望零运维（没有数据库需要备份）。**不适合**：高并发写入、需要全文检索、或数据量大到 GitHub 仓库体积成为瓶颈的场景，具体见文末的「已知限制」。
 
@@ -43,7 +43,7 @@ tags: [开源, Waline, Netlify, GitHub]
 5. 前端把 serverURL 指到 https://<站点>/.netlify/functions/comment
 ```
 
-> ⚠️ **不要把数据仓库设成站点仓库自己。** 每次写评论都会向数据仓库提交一次 commit，两者若是同一个仓库，Netlify 会把每次提交都当成部署触发，形成"写入 → 部署 → 写入"的循环。
+> ⚠️ **不要把数据仓库设成站点仓库自己。** 每次写评论都会向数据仓库提交一次 commit。两者若是同一个仓库，Netlify 会把每次提交都当成部署触发，形成“写入 → 部署 → 写入”的循环。
 
 ## 完整部署教程
 
@@ -54,7 +54,7 @@ tags: [开源, Waline, Netlify, GitHub]
 - **建议设为 Private**：评论 CSV 含 `mail`、`ip`、`ua` 等字段，公开仓库等于公开这些信息。
 - **不要勾选 Add a README**：本方案在完全空白的仓库上也能工作，首条评论写入时会自动创建分支与首个提交。
 - 若仓库已有内容且有 `main` 分支，把 `GITHUB_BRANCH` 指到那个分支即可。
-- 一个数据仓库只服务一个站点，多站点共会让提交互相干扰。
+- 一个数据仓库只服务一个站点，多站点共用会让提交互相干扰。
 
 ### 准备 GitHub 访问令牌
 
@@ -67,7 +67,7 @@ GitHub → **Settings → Developer settings → Personal access tokens → Fine
 | Repository access | **Only select repositories** → 选上一步那个数据仓库 |
 | Permissions → Contents | **Read and write** |
 
-生成后复制 `github_pat_...` 那串，下一步要用。**它只会出现一次。**
+生成后复制 `github_pat_...` 那串，下一步会用到。**它只会出现一次。**
 
 ### Fork 并接入 Netlify
 
@@ -82,9 +82,9 @@ GitHub → **Settings → Developer settings → Personal access tokens → Fine
    | Functions directory | `netlify/functions/`（已在 `netlify.toml` 里） |
    | Node version | 24（已在 `netlify.toml` 里） |
 
-4. 先别急着部署，去 **Site configuration → Environment variables** 配好变量（见下一节）再触发。
+4. 先别急着部署，去 **Site configuration → Environment variables** 配好变量（见下一节），再触发部署。
 
-> Fork 后有处**必须改**：`netlify.toml` 末尾有一条 favicon 重定向指向本仓库作者的站点，请改成你自己的图标地址，或直接删掉那一段。
+> Fork 后有一处**必须改**：`netlify.toml` 末尾有一条 favicon 重定向指向本仓库作者的站点，请改成你自己的图标地址，或者直接删掉那一段。
 
 ### 配置环境变量
 
@@ -117,7 +117,7 @@ GitHub → **Settings → Developer settings → Personal access tokens → Fine
 https://<你的站点>/.netlify/functions/comment/ui/register
 ```
 
-第一个注册的账号自动成为管理员，后台入口是同目录下的 `/ui/login`。若注册页 500，先看 Netlify 的 Function 日志，多半是 `GITHUB_TOKEN` / `GITHUB_REPO` 不对。
+第一个注册的账号自动成为管理员，后台入口是同目录下的 `/ui/login`。如果注册页返回 500，先看 Netlify 的 Function 日志，多半是 `GITHUB_TOKEN` / `GITHUB_REPO` 配错了。
 
 ### 前端接入
 
@@ -134,7 +134,7 @@ https://<你的站点>/.netlify/functions/comment/ui/register
 </script>
 ```
 
-框架用户（Hexo / Vitepress / Astro …）同理，把 `serverURL` 指过去即可。`serverURL` 末尾**不要带斜杠**，也不要加 `/api`——本仓库没有配置 `/api` 重定向。
+框架用户（Hexo / Vitepress / Astro …）同理，把 `serverURL` 指过去即可。`serverURL` 末尾**不要带斜杠**，也不要加 `/api`：本仓库没有配置 `/api` 重定向。
 
 嫌路径长可以在 `netlify.toml` 里加一条重定向：
 
@@ -150,7 +150,7 @@ https://<你的站点>/.netlify/functions/comment/ui/register
 ### 验证清单
 
 1. 打开 `https://<站点>/.netlify/functions/comment`（Waline 自带示例页，可直接发一条评论）。
-2. 发完后去数据仓库看：应出现 `data/comments/<xx>/<xxxx>.csv` 与 `data/comments/_manifest.csv`。
+2. 发完后去数据仓库看，应出现 `data/comments/<xx>/<xxxx>.csv` 与 `data/comments/_manifest.csv`。
 3. 调一次 `GET /csv-store/stats`（需管理员 token，见后文「备份与运维」），确认 `shards.Comment ≥ 1`、`pending = 0`。
 4. 用 `/ui/login` 登录后台，确认能看到刚才那条评论。
 5. 刷新前端页面，评论应正常显示。
@@ -185,10 +185,10 @@ data/                             # 数据根目录（CSV_STORE_DIR，默认 dat
 | `Users` | `objectId` | `users/<objectId[0:2]>/<objectId[0:2]>.csv` |
 
 - **为什么 Comment/Counter 用 url 哈希做文件名**：同一篇文章的评论必然落在同一个分片族里，按文章查询只需读一个分片，局部写入也只影响一个分片。
-- **为什么 Users 只用 2 位前缀且"目录名 = 文件名"**：Users 的 key 是一行一个的 `objectId`，照搬 4 位前缀会让 10 万用户产生约 10 万个只有一行的小文件；2 位前缀把分片数收敛到有限个桶，每片容纳成百上千行。
+- **为什么 Users 只用 2 位前缀且“目录名 = 文件名”**：Users 的 key 是一行一个的 `objectId`，照搬 4 位前缀会让 10 万用户产生约 10 万个只有一行的小文件；2 位前缀把分片数收敛到有限个桶，每片容纳成百上千行。
 - **裂变**：族内任一文件达到 `SHARD_MAX_ROWS` 行后，新记录写入 `<前缀>-1.csv`、`-2.csv`…，保证单个 CSV 不会无限增长。
 - **合并**：族内总行数回落到阈值以内时，`POST /csv-store/compact` 可把它压回基础分片。
-- **搬迁（页面换地址）**：只在外部改了 CSV 的 `url` 列却没挪文件时，行会留在旧地址哈希出的分片里成为"错位行"。系统会自动把它们搬回新地址对应的族，见后文「页面换地址后评论不见了」。
+- **搬迁（页面换地址）**：只在外部改了 CSV 的 `url` 列却没挪文件时，行会留在旧地址哈希出的分片里成为“错位行”。系统会自动把它们搬回新地址对应的族，见后文「页面换地址后评论不见了」。
 
 ### `_manifest.csv`
 
@@ -197,11 +197,11 @@ shard_path,row_count,sha,updated_at,min_key,max_key
 comments/ab/abcd.csv,1832,3f9c…,2026-09-25T10:00:00.000Z,/posts/hello,/posts/hello
 ```
 
-manifest 是**读路径的核心**：刷新时只拉取三张表的 manifest（3 次 API 调用），逐条比对 `sha`，只有真正变化的分片才会被下载。manifest 与分片永远在同一次 Git 提交中落地，不会出现两者不一致的中间态。
+manifest 是**读路径的核心**：刷新时只拉取三张表的 manifest（3 次 API 调用），逐条比对 `sha`，只有真正变化的分片才会被下载。manifest 与分片永远落在同一次 Git 提交里，不会出现两者不一致的中间状态。
 
 ### CSV 列
 
-每张表的规范列与 Waline 上层实际读写的字段一致；`sticky`、`like`、`2fa`、自定义计数器类型等动态列会以"规范列 ∪ 实际出现的动态列"的形式写进表头（动态列按字母序追加），因此表头稳定且不丢字段。
+每张表的规范列与 Waline 上层实际读写的字段一致；`sticky`、`like`、`2fa`、自定义计数器类型等动态列会以“规范列 ∪ 实际出现的动态列”的形式写进表头（动态列按字母序追加），因此表头稳定且不丢字段。
 
 | 表 | 列 |
 |---|---|
@@ -221,7 +221,7 @@ manifest 是**读路径的核心**：刷新时只拉取三张表的 manifest（3
 | `CSV_STORE_DIR` | | `data` | 数据根目录 |
 | `SHARD_MAX_ROWS` | | `2000` | 单个分片行数上限，超过则裂变 |
 | `SHARD_HASH_LEN` | | `2` | 一级目录哈希前缀长度（越大分片越多越小） |
-| `FLUSH_INTERVAL` | | `30000` | 定时刷盘间隔（ms）；serverless 下主要靠"响应前刷盘" |
+| `FLUSH_INTERVAL` | | `30000` | 定时刷盘间隔（ms）；serverless 下主要靠“响应前刷盘” |
 | `MAX_BATCH_SIZE` | | `50` | 单次 Git 提交最多包含的分片数 |
 | `MAX_RETRIES` | | `3` | 一次 flush 的最大尝试次数（含冲突重试） |
 | `CSV_CACHE_TTL` | | `60000` | 内存缓存有效期（ms），到期后检查 manifest 变化 |
@@ -231,7 +231,7 @@ manifest 是**读路径的核心**：刷新时只拉取三张表的 manifest（3
 | `JWT_TOKEN` | 建议 | | 与 Waline 本身一致，用于管理员登录态 |
 | `GITHUB_API_BASE` | | `https://api.github.com` | 仅用于测试/自建代理 |
 
-> `COMMENT_AUDIT=true` 时新评论默认 `waiting`，管理员在后台批准后才出现在前台。这是 Waline 自身的审核工作流，存储层只如实保存 `status` 字段。
+> `COMMENT_AUDIT=true` 时新评论默认 `waiting`，管理员在后台批准后才会出现在前台。这是 Waline 自身的审核工作流，存储层只如实保存 `status` 字段。
 
 ## 备份与运维
 
@@ -261,7 +261,7 @@ curl -X POST "$BASE/restore?date=2026-09-25" -H "Authorization: Bearer $TOKEN"
 curl -X POST "$BASE/reset?confirm=1" -H "Authorization: Bearer $TOKEN"
 ```
 
-token 从浏览器里拿：登录后台后打开 DevTools → Network，随便挑一个后台请求，复制它的 `Authorization: Bearer xxxxx` 那段即可。接口**只认 `Authorization` 头**，不支持把 token 放在 URL query 里（会被代理日志记下）。`restore` 的 `date` 必须是 `YYYY-MM-DD`，非法值直接报错，不会拿它去拼路径。
+token 可以这样拿：登录后台后打开 DevTools → Network，随便挑一个后台请求，复制它的 `Authorization: Bearer xxxxx` 那段即可。接口**只认 `Authorization` 头**，不支持把 token 放在 URL query 里（会被代理日志记下）。`restore` 的 `date` 必须是 `YYYY-MM-DD`，非法值直接报错，不会拿它去拼路径。
 
 ### 每日快照
 
@@ -276,16 +276,16 @@ token 从浏览器里拿：登录后台后打开 DevTools → Network，随便�
 
 ### 仓库瘦身：`POST /csv-store/reset`
 
-写入即提交，历史里因此堆着**每一次分片重写产生的 blob**，仓库体积只增不减，时间久了会逼近 GitHub 的建议上限。而评论数据的历史提交没有价值——任何时点都能用快照恢复。reset 做的是：
+写入即提交，历史里因此堆着**每一次分片重写产生的 blob**，仓库体积只增不减，时间久了会逼近 GitHub 的建议上限。评论数据的历史提交没有价值——任何时点都能用快照恢复。reset 做的事是：
 
 - 用当前 `data/` 下的文件构造一个**没有父提交**的 commit，并强制更新分支指针；
-- 仓库回到"一个提交"的状态，`.git` 体积随之降到当前数据大小；
+- 仓库回到“一个提交”的状态，`.git` 体积随之降到当前数据大小；
 - 快照目录（同样只是历史负担）默认一并丢弃，需要保留就传 `keepSnapshots=1`；
-- 比"新建仓库再切环境变量"更直接：没有两份数据并存的切换窗口，也不需要改配置。
+- 比“新建仓库再切环境变量”更直接：没有两份数据并存的切换窗口，也不需要改配置。
 
 操作前建议先 `POST /csv-store/snapshot` 拍一张，确认无误再 reset。
 
-> **重置会不会删掉评论？不会。** reset 只把 git 历史清零。它列出的 `data/` 下**全部当前文件**（含 `data/comments/**`、`data/users/**`、`data/counters/**`）都以 `{sha}` 形式原样带进新提交，引用现有 blob，内容一个字节都不动——重置后评论、用户、阅读量与重置前完全一致。唯一会丢掉的是 `_snapshots/` 快照目录，想留住就传 `keepSnapshots=1`。
+> **重置会不会删掉评论？不会。** reset 只把 git 历史清零。它把 `data/` 下**全部当前文件**（含 `data/comments/**`、`data/users/**`、`data/counters/**`）以 `{sha}` 形式原样带进新提交，引用现有 blob，内容一个字节都不动——重置后评论、用户、阅读量与重置前完全一致。唯一会丢掉的是 `_snapshots/` 快照目录，想留住就传 `keepSnapshots=1`。
 
 ### 页面换地址后评论不见了
 
@@ -296,15 +296,15 @@ comments/fc/fca4.csv   sha1('/links/')    ← 新评论会写到这里
 comments/1b/1bd2.csv   sha1('/friends/')  ← 迁移过来的旧评论留在这里，读不到
 ```
 
-整套存储的前提是"由 key 算出族、再去那个族里找"，所以 `1bd2` 里的旧评论在前台一条都不会显示；而 `compact` 只在同族内合并，也不会把它们带回来。
+整套存储的前提是“由 key 算出族、再去那个族里找”，所以 `1bd2` 里的旧评论在前台一条都不会显示；而 `compact` 只在同族内合并，也不会把它们带回来。
 
 现在的处理是**自愈**：
 
 1. 刷新时若 manifest 的 `min_key === max_key` 却哈希不到该文件所在的族，就把这个文件登记为该 key 规范族的**别名分片**（旧评论立即可读）；
 2. 同一次刷新里把全部错位行搬回各自的规范分片，它们因此在下次提交中落到正确的文件里；旧文件被清空后删除，别名登记随之消失；
-3. 第 1 步只能覆盖"整片同一个 key"的情况。一个文件里混着多个 key 时，由 `POST /csv-store/repair`、`POST /csv-store/compact`、`POST /csv-store/rebuild` 这类整表操作逐行核对搬迁。
+3. 第 1 步只能覆盖“整片同一个 key”的情况。一个文件里混着多个 key 时，由 `POST /csv-store/repair`、`POST /csv-store/compact`、`POST /csv-store/rebuild` 这类整表操作逐行核对搬迁。
 
-代价是每个进程最多付一次全表加载，数据归位后不再触发。想立刻要一份报告可以直接调 `POST /csv-store/repair`；`GET /csv-store/stats` 里的 `misplaced` 表示还有多少个别名分片没归位，正常情况下应为 0。
+代价是每个进程最多付一次全表加载，数据归位后不再触发。想立刻看报告，可以直接调 `POST /csv-store/repair`；`GET /csv-store/stats` 里的 `misplaced` 表示还有多少个别名分片没归位，正常情况下应为 0。
 
 ## 从旧版迁移数据
 
@@ -391,9 +391,9 @@ npm test          # 60 个用例：单元 + 集成 + 真实 Waline 运行时端�
 npm run benchmark # 生成 overlay/benchmark/REPORT.md
 ```
 
-测试不需要任何真实凭据：`overlay/csv-store-tests/mock-github.js` 是一个会讲 HTTP 的内存版 GitHub（真的维护 blob/tree/commit/ref 四层对象，真的会拒绝非快进更新），所以"并发冲突""重试""回滚"这些行为测到的就是线上行为。
+测试不需要任何真实凭据：`overlay/csv-store-tests/mock-github.js` 是一个会讲 HTTP 的内存版 GitHub（真的维护 blob/tree/commit/ref 四层对象，真的会拒绝非快进更新），所以“并发冲突”“重试”“回滚”这些行为测到的就是线上行为。
 
-**本地必须也验一遍生产运行时**：Lambda 的 Node 24 **没有开启 `require(esm)`**，而本地 Node 默认开着，所以"某个依赖变成纯 ESM 却被同步 require"这类问题本地跑得好好的、上线才炸（1.43.4 的 `@mdit/plugin-emoji` 就是这么踩的）。`npm test` 里已有一个守卫用例会开子进程用 `--no-experimental-require-module` 加载函数入口，想手工确认也可以直接跑：
+**本地必须也验一遍生产运行时**：Lambda 的 Node 24 **没有开启 `require(esm)`**，而本地 Node 默认开着，所以“某个依赖变成纯 ESM 却被同步 require”这类问题本地跑得好好的、上线才炸（1.43.4 的 `@mdit/plugin-emoji` 就是这么踩的）。`npm test` 里已有一个守卫用例会开子进程用 `--no-experimental-require-module` 加载函数入口，想手工确认也可以直接跑：
 
 ```bash
 # 模拟生产运行时，确认函数入口能被加载（这是把 1.43.4 跑挂的那个坑）
@@ -416,20 +416,20 @@ node --no-experimental-require-module -e "require('./netlify/functions/comment.j
 | 部署后站点无限重新构建 | 数据仓库指向了站点仓库自己 | 换成独立的专用数据仓库 |
 | `Git Trees API 返回被截断` | 仓库文件数超过 10 万，无法安全做快照 | 拆分仓库，或 `POST /csv-store/reset` 清理历史 |
 | 数据仓库体积持续增大 | 每次写入都会重写整个分片并产生新 blob，历史只增不减 | `POST /csv-store/reset`；或调小 `SHARD_MAX_ROWS` |
-| 阅读量比实际访问少 | 多实例并发自增（已用"远端值 + 本地增量"合并修掉绝大多数） | 极端并发仍可能少计 1~2 次，计数类数据本就不要求精确 |
+| 阅读量比实际访问少 | 多实例并发自增（已用“远端值 + 本地增量”合并修掉绝大多数） | 极端并发仍可能少计 1~2 次，计数类数据本就不要求精确 |
 | 写入偶发超时 | GitHub API 慢 + 函数超时 | 已设 26s；仍超时可减小 `SHARD_MAX_ROWS` 让单次提交更小 |
 | 分片文件太多 | 文章数很多，一片一族是设计使然 | 调小 `SHARD_HASH_LEN` 会把文章合并到更少的分片 |
 
 ## 写入可靠性设计：为什么不会丢评论
 
-这套方案跑在 serverless 上，写入又完全依赖外部 API，所以"会不会丢评论"是它最需要交代清楚的问题。下面八条是设计上的回答。
+这套方案跑在 serverless 上，写入又完全依赖外部 API，所以“会不会丢评论”是它最需要交代清楚的问题。下面八条是设计上的回答。
 
-1. **响应前落盘**：中间件在每次请求返回前 `await flush()`。Netlify/Lambda 实例在响应后会被冻结，只靠定时器刷盘不可靠。落盘失败会把响应改成 5xx，绝不让客户端以为"保存成功"；并发请求也不会因为复用了在途提交而漏掉自己的写入。
+1. **响应前落盘**：中间件在每次请求返回前 `await flush()`。Netlify/Lambda 实例在响应后会被冻结，只靠定时器刷盘不可靠。落盘失败会把响应改成 5xx，绝不让客户端以为“保存成功”；并发请求也不会因为复用了在途提交而漏掉自己的写入。
 2. **写后读一致**：变更先应用到内存（含索引）再异步提交。`add()` 返回后立刻 `select()` 就能看到，`add()` 返回的主键也一定有效。
 3. **原子提交**：分片与 manifest 在同一次 Git Data API 提交里落地，要么全部生效，要么全部不生效。
-4. **乐观锁**：读取顺序固定为"先读 head、再读数据"，提交时 `force=false` 更新 ref。只要在读取数据之后有人提交过，我们的非快进更新就会被 GitHub 拒绝。
-5. **冲突合并**：被拒后重新拉取 manifest，只下载 SHA 变化的分片，按"本地优先 + 尊重本实例删除"的规则合并，再重试（最多 `MAX_RETRIES` 次，带退避）。计数类表（`Counter`）例外：数值列按"远端值 + 本实例增量"合并，否则两个实例各加一次的阅读量会被后提交者覆盖掉一个。
-6. **失败回滚**：重试耗尽后把内存恢复到"最后一次提交成功"的状态并丢弃待提交标记，让进程内状态与远端重新一致，同时把错误抛给调用方。
+4. **乐观锁**：读取顺序固定为“先读 head、再读数据”，提交时 `force=false` 更新 ref。只要在读取数据之后有人提交过，我们的非快进更新就会被 GitHub 拒绝。
+5. **冲突合并**：被拒后重新拉取 manifest，只下载 SHA 变化的分片，按“本地优先 + 尊重本实例删除”的规则合并，再重试（最多 `MAX_RETRIES` 次，带退避）。计数类表（`Counter`）例外：数值列按“远端值 + 本实例增量”合并，否则两个实例各加一次的阅读量会被后提交者覆盖掉一个。
+6. **失败回滚**：重试耗尽后把内存恢复到“最后一次提交成功”的状态并丢弃待提交标记，让进程内状态与远端重新一致，同时把错误抛给调用方。
 7. **幂等去重**：`mail + url + 内容哈希` 相同且落在 `DEDUP_WINDOW_SECONDS` 内的提交直接返回既有记录，避免刷新/重放导致的重复写入。
 8. **限流友好**：GitHub 次级限流（403 + rate limit 文案）与 429/5xx 都会退避重试并遵循 `Retry-After`；鉴权类错误不重试，直接报错。
 
@@ -437,15 +437,15 @@ node --no-experimental-require-module -e "require('./netlify/functions/comment.j
 
 本改造只替换底层存储适配器，**没有改动任何上层业务逻辑**。为了能正常工作，下列几处必须与 Waline 的实际契约对齐，与上游行为存在（有意为之的）差异：
 
-1. **CSV 列名**：以上层 controller 真正读写的字段为准（`comment` / `insertedAt` / `link` / `objectId` …），而不是任何"看起来更合理"的命名。
-2. **`update` 支持函数返回补丁**：上游 `update(data, where)` 在 `data` 是函数时会丢弃返回值，导致 GitHub 存储下阅读量（Counter）永远不增长。这里同时支持"函数就地修改"与"函数返回补丁对象"。
+1. **CSV 列名**：以上层 controller 真正读写的字段为准（`comment` / `insertedAt` / `link` / `objectId` …），而不是任何“看起来更合理”的命名。
+2. **`update` 支持函数返回补丁**：上游 `update(data, where)` 在 `data` 是函数时会丢弃返回值，导致 GitHub 存储下阅读量（Counter）永远不增长。这里同时支持“函数就地修改”与“函数返回补丁对象”。
 3. **`LIKE` 转义正则元字符**：上游把关键字直接拼进 `new RegExp`，含 `(`、`[` 等字符的搜索关键词会抛错。这里统一转义。
 4. **`>` 做真正的时间比较**：上游用 `item[k] >= where[k][1]`，当右侧是 `Date` 时字符串与日期比较得到 `NaN`，条件恒为 false（评论频率限制因此从未生效）。这里对日期做显式归一化后按 `>` 语义比较。
-5. **动态列不丢**：上游写盘用 `headers: true`，会把首个写入行之外的额外字段整列丢弃（`sticky`、`like`、`2fa`、自定义计数器类型都会丢）。这里用"规范列 ∪ 动态列"。
+5. **动态列不丢**：上游写盘用 `headers: true`，会把首个写入行之外的额外字段整列丢弃（`sticky`、`like`、`2fa`、自定义计数器类型都会丢）。这里用“规范列 ∪ 动态列”。
 
 ## 代码结构
 
-仓库刻意保持"上游 + 补丁"的形状——所有改造都收在 `overlay/` 一层目录里，根目录不新增任何平级目录，因此和上游 starter 的 diff 一眼能看清：
+仓库刻意保持“上游 + 补丁”的形状——所有改造都收在 `overlay/` 一层目录里，根目录不新增任何平级目录，因此和上游 starter 的 diff 一眼能看清：
 
 ```text
 netlify/functions/comment.js    # 唯一的上游接线点：Waline({ model, plugins })
@@ -469,9 +469,9 @@ overlay/                        # ← 我们做的全部改造都在这一层里
 | `@mathjax/*`、`leancloud-*`、`speech-rule-engine` | `empty-stub` | 这些重依赖本站用不到（数学公式已关闭），留着会把 Netlify 的函数包顶到限额之外 |
 | `@mdit/plugin-emoji` | `plugin-emoji-cjs` | 它**只有 ESM 构建**，而 waline 在模块加载期同步 `require` 它，禁用 `require(esm)` 的运行时（Lambda 的 Node 24）会直接 `ERR_REQUIRE_ESM` |
 
-**为什么用 tarball 而不是目录**：目录形式的桩（`file:./overlay/empty-stub`）会被 npm 建成"链接"节点；一旦需要重新解析依赖树（升级任何依赖、改版本范围），arborist 会在链接目标还没建立时去比较它，直接抛 `Cannot read properties of null`——也就是说目录桩会让**依赖再也升不动**。tarball 形式的桩被 npm 当作普通包安装，不产生链接节点：升级、降级、`npm ci`、Netlify 构建全部正常，不需要任何额外开关。
+**为什么用 tarball 而不是目录**：目录形式的桩（`file:./overlay/empty-stub`）会被 npm 建成“链接”节点；一旦需要重新解析依赖树（升级任何依赖、改版本范围），arborist 会在链接目标还没建立时去比较它，直接抛 `Cannot read properties of null`——也就是说目录桩会让**依赖再也升不动**。tarball 形式的桩被 npm 当作普通包安装，不产生链接节点：升级、降级、`npm ci`、Netlify 构建全部正常，不需要任何额外开关。
 
-**为什么必须提交这两个 tarball**：npm 在解析依赖树阶段就要按 `file:` 路径打开它们，这发生在任何 `preinstall`/`postinstall` 脚本之前，所以没法"安装时现打"。它们合起来只有 1.3KB，且 lockfile 里记录了各自的 integrity 哈希——换句话说它们和 `package-lock.json` 是同一类东西：**可复现安装所需的输入**。
+**为什么必须提交这两个 tarball**：npm 在解析依赖树阶段就要按 `file:` 路径打开它们，这发生在任何 `preinstall`/`postinstall` 脚本之前，所以没法在安装时现打。它们合起来只有 1.3KB，且 lockfile 里记录了各自的 integrity 哈希——换句话说，它们和 `package-lock.json` 是同一类东西：**可复现安装所需的输入**。
 
 改了本地包的内容或版本号之后，按这个顺序做（否则 npm 会拿旧 lockfile 里的条目去替换，报出 `ENOENT ... overlay/xxx.tgz` 或 tarball 损坏之类的怪错）：
 
@@ -481,7 +481,7 @@ rm package-lock.json    # 让 npm 从零解析（overrides 变动时必须）
 npm install             # 重建 node_modules 与 lockfile
 ```
 
-> 想彻底不提交 tarball，唯一的替代是**把这些本地包发布到 npm**、然后 `overrides` 写版本号（例如 `"@mdit/plugin-emoji": "npm:@your-scope/plugin-emoji-cjs@^1"`）。代价是多一个需要自己维护的已发布包；本仓库选择"提交 1.3KB"。
+> 想彻底不提交 tarball，唯一的替代是**把这些本地包发布到 npm**、然后 `overrides` 写版本号（例如 `"@mdit/plugin-emoji": "npm:@your-scope/plugin-emoji-cjs@^1"`）。代价是多一个需要自己维护的已发布包；本仓库选择提交 1.3KB。
 
 | 文件 | 职责 |
 |---|---|
@@ -498,7 +498,7 @@ npm install             # 重建 node_modules 与 lockfile
 | `overlay/empty-stub/` | 重依赖的空实现桩源码（打包产物由 `package.json` 的 `overrides` 指向） |
 | `overlay/plugin-emoji-cjs/` | emoji 垫片源码：把只有 ESM 构建的 `@mdit/plugin-emoji` 以 CJS 形式提供给 waline 的同步 require |
 
-依赖桩让外置包总体积保持在约 94MB，低于 Netlify 的 250MB 函数包限额。它与 csv-store 无关，只是同样属于"我们对上游的改写"。
+依赖桩让外置包总体积保持在约 94MB，低于 Netlify 的 250MB 函数包限额。它与 csv-store 无关，只是同样属于“我们对上游的改写”。
 
 ### 加载范围：按分片族按需加载
 
@@ -510,17 +510,17 @@ npm install             # 重建 node_modules 与 lockfile
 | `Users` 按 `objectId` 查（鉴权、用户资料） | 命中族（objectId 前两位决定的桶） |
 | 后台列表、模糊搜索、按 `pid`/`rid` 删除、`count({})` | 整表（无法收敛到族，宁可多读也不给不完整结果） |
 
-因此冷启动不再需要把整个数据集读进内存：只读 manifest（每表 1 次请求）+ 命中分片。只有真正需要全局视图的操作才会把整表读进来，并把该表标记为"已全量加载"。
+因此冷启动不再需要把整个数据集读进内存：只读 manifest（每表 1 次请求）+ 命中分片。只有真正需要全局视图的操作才会把整表读进来，并把该表标记为“已全量加载”。
 
 ### 内存占用
 
-已加载的分片常驻内存（只在远端 SHA 变化时重新下载），这是"查询不碰网络"的前提。
+已加载的分片常驻内存（只在远端 SHA 变化时重新下载），这是“查询不碰网络”的前提。
 
 `overlay/csv-store-tests/memory.spec.js` 会钉死全量加载时的上界：**10 万条评论（1973 个分片）的行对象加上 `byId` / `byField` / 分片族索引，实测常驻约 88.7 MB**，低于 100MB 预算，超出即测试失败。
 
 按需加载让常见路径的实际占用远低于这个上界。索引是分片级增量维护的，只有分片合并与回滚这类整表重写才做一次全量重建。
 
-索引刻意保持精简：主键直达（`byId`）、等值/IN 的倒排桶（`byField`）、分片族索引（新增记录时 O(族内分片) 定位落点）。重复提交的指纹**不做全局索引**——10 万条评论下那份 `Map<hash, Set>` 实测要占 20MB 以上（接近总量四分之一），而它只在新增评论时用一次，因此改成在"同一 url 的候选行"上现算。
+索引刻意保持精简：主键直达（`byId`）、等值/IN 的倒排桶（`byField`）、分片族索引（新增记录时 O(族内分片) 定位落点）。重复提交的指纹**不做全局索引**——10 万条评论下那份 `Map<hash, Set>` 实测要占 20MB 以上（接近总量四分之一），而它只在新增评论时用一次，因此改成在“同一 url 的候选行”上现算。
 
 ## 同步上游与升级
 
@@ -542,7 +542,7 @@ git merge upstream/master --no-ff
 
 1. **写入依赖 GitHub API**：每条评论约 7 次 API 调用（head/manifest 校验 + blob + tree + commit + ref）。令牌配额 5000 次/小时，博客量级绰绰有余，但不适合高频率写入场景。
 2. **仓库体积只增不减**：每次写入都会重写整个分片并产生新 blob。用 `POST /csv-store/reset` 周期性清零历史。
-3. **后台"全部评论"列表会整表加载**：数据量大时首次打开较慢（按需加载无法收敛到族）。
+3. **后台“全部评论”列表会整表加载**：数据量大时首次打开较慢（按需加载无法收敛到族）。
 4. **跨实例读有 TTL 延迟**（默认 60s）：A 实例写入后，B 实例最多 60s 后才看到。
 5. **数据仓库只服务一个站点**：多站点共用一个仓库会让提交互相干扰。
 6. **数据里含 PII**（`mail`、`ip`、`ua`）：数据仓库建议设为 Private。
@@ -550,6 +550,6 @@ git merge upstream/master --no-ff
 
 ## 最后几句
 
-这套方案的本质，是把"评论数据放哪"这个问题回答成"放在你自己的 git 仓库里"。它换来的是零外部依赖的备份、可回溯的变更记录，以及查询时不再下载整个数据集；代价是写入路径变长（一次评论一次提交）、仓库体积需要定期用 reset 清理，以及读跨实例有最长 60 秒的延迟。
+这套方案的本质，是把“评论数据放哪”这个问题回答成“放在你自己的 git 仓库里”。它换来的是零外部依赖的备份、可回溯的变更记录，以及查询时不再下载整个数据集；代价是写入路径变长（一次评论一次提交）、仓库体积需要定期用 reset 清理，以及读跨实例有最长 60 秒的延迟。
 
 如果站点规模在几十万条评论以内、写入不频繁，这些代价基本可以忽略；反过来，如果需要全文检索或者写入压力很大，还是老老实实换回带数据库的方案更合适。

@@ -6,7 +6,7 @@ tags: [Jekyll, Chirpy, SSG, 前端]
 image: https://chirpy-img.netlify.app/commons/devices-mockup.png
 ---
 
-更新：现在你也可以直接引用 `<script defer src="{{ 'https://exyon.ee/assets/js/chirpy-enhance.min.js' | relative_url }}" data-config="{{ site.chirpy_enhance | jsonify | escape }}"></script>` 来使用这个增强脚本了，我为其添加了跨源访问
+更新：现在你也可以直接引用 `<script defer src="{{ 'https://exyon.ee/assets/js/chirpy-enhance.min.js' | relative_url }}" data-config="{{ site.chirpy_enhance | jsonify | escape }}"></script>` 来使用这个增强脚本了，我为其添加了跨源访问。
 
 如果需要文中的源代码，可以直接访问 [GitHub 仓库](https://github.com/exyonefs/exyonefs.github.io) 获取。
 
@@ -14,7 +14,7 @@ image: https://chirpy-img.netlify.app/commons/devices-mockup.png
 
 回归正题。本文的全部操作以 **Chirpy 7.6** 为准，本仓库的 `Gemfile` 里锁的正是 `~> 7.6`。旧版本的主题文件、暗色信号与预留钩子都有差别，文中许多步骤无法照搬，敬请知悉。
 
-## 定制的前提：覆盖机制与两个钩子
+## 注入接口：同名覆盖与两个官方钩子
 
 Chirpy 以 Ruby gem 的形式安装，主题文件并不在仓库里，但这不妨碍定制。Jekyll 读取文件时站点优先：只要在博客目录下创建与主题内相对路径同名的文件，站点版本就会覆盖 gem 中的版本。把 `_includes/footer.html` 往仓库里一放，主题自带的页脚即被替换，全程不必碰 gem，日后升级主题也不会产生冲突。
 
@@ -22,9 +22,9 @@ Chirpy 以 Ruby gem 的形式安装，主题文件并不在仓库里，但这不
 
 换句话说，这两条路决定了改动的边界：同名文件负责替换现成组件，两个钩子负责追加新东西。理清这一点，剩下的工作就是把需求逐条落到对应文件里。
 
-## 两处小改动：贴纸与页脚
+## 小组件实现：右下角贴纸与页脚
 
-### 右下角贴纸
+### 贴纸：固定在视口右下角的一张图
 
 注：贴纸思路来源于 [manalogues.com/posts/2024/09/13](https://manalogues.com/posts/2024/09/13)，实现方式略有出入。
 
@@ -70,7 +70,7 @@ Chirpy 以 Ruby gem 的形式安装，主题文件并不在仓库里，但这不
 
 几处细节值得说明。`position: fixed` 让贴纸不随滚动移动；`pointer-events: none` 保证它永远不挡点击；`aria-hidden="true"` 配上空的 `alt`，让辅助技术忽略这张纯装饰图片；`loading="lazy"` 把加载推迟到浏览器认为需要时。图片自身再关掉选中与拖拽，避免误操作拖出半张图。窄屏上贴纸意义不大，768px 以下直接隐藏。
 
-### 页脚
+### 页脚：动态年份、站点统计与心跳图标
 
 `_includes/footer.html` 覆盖了主题页脚。相比默认版本，我加了三样东西：动态年份、站点统计、心跳图标。
 
@@ -115,7 +115,7 @@ Chirpy 以 Ruby gem 的形式安装，主题文件并不在仓库里，但这不
 
 这里有一处小疏漏可以提一句：暗色分支写的选择器是 `[data-mode="dark"]`，而 Chirpy 7.x 实际挂在 `<html>` 上的是 `data-bs-theme`，两者对不上；好在两处颜色本来相同，视觉上看不出差别。技术栈链接（Jekyll、Chirpy、GitHub Pages、Cloudflare CDN）保持原样，另外顺手把侧栏标题调到了 `1.5rem`。
 
-## 评论区：Waline 打底，Giscus 折叠
+## 评论区：Waline 为主， Giscus 备用
 
 评论是改动较大的一块。`_includes/comments/waline.html` 实现了「Waline 为主、Giscus 备用」的双系统。先说为什么留两个：Waline 不需要 GitHub 账号，访问也顺畅，适合作为默认评论区；Giscus 基于 GitHub Discussions，适合愿意用 GitHub 账号登录的读者。与其二选一，不如让 Giscus 折叠在 Waline 下方，按需展开。
 
@@ -168,7 +168,7 @@ Giscus 折叠面板还有一点体验细节：展开状态存进 `localStorage`�
 
 最后是无脚本兜底：`<noscript>` 给出 "Comments require JavaScript." 的提示，并附一份 unpkg 的样式表链接，至少不让页面出错。
 
-## 样式与交互：jekyll-theme-chirpy.scss
+## 样式与交互：从外观设计到前端工程化
 
 这一节内容最多。文件顶部有一段空 front matter（两行 `---`），Jekyll 据此才愿意处理它；随后以导入主题主样式开头，注意生产环境导入的是压缩产物 `main.bundle`：
 
@@ -184,7 +184,7 @@ Giscus 折叠面板还有一点体验细节：展开状态存进 `localStorage`�
 
 以下按层次展开。
 
-### 外观微调
+### 外观微调：字体栈与代码块红绿灯
 
 中文正文换用一套更贴合汉字的无衬线字体栈；代码块头部画上 macOS 红绿灯：
 
@@ -208,7 +208,7 @@ Giscus 折叠面板还有一点体验细节：展开状态存进 `localStorage`�
 
 一个 `::before` 加两组 `box-shadow`，凑出红黄绿三颗点，只在 576px 以上启用，小屏不占地方。元信息里图标之间的分隔符（`.icon-border`）则直接隐藏，只留必要的间距。
 
-### 设计令牌与毛玻璃
+### 设计 token 与毛玻璃：让组件跟着主题换色
 
 全站自定义组件共享一套 `--enh-*` 变量，且全部做了回退链：先取 Chirpy 的变量，再退到 Bootstrap 的变量，最后才是硬编码色值。这样主题换色时组件跟着变，不会各走各的。
 
@@ -314,7 +314,7 @@ chirpy_enhance:
 
 该让的地方也让：`:focus-visible` 统一焦点圈，`prefers-contrast: more` 下去掉阴影改用描边，`prefers-reduced-motion: reduce` 关掉一切动画，打印时隐藏全部浮层，高分屏则把进度条加粗到 2.5px。移动端另有取舍：贴纸、粒子背景在窄屏隐藏，悬浮卡片改为近全宽，播放控制按钮也顺势放大到更好点按的尺寸。
 
-## 诗集：一个纸面目录页
+## 诗集：借集合与标签页做纸面目录
 
 `_poems` 是填词的存档处，独立集合。它没有另起炉灶，而是尽量借 Chirpy 的现成机制。
 
@@ -348,7 +348,7 @@ order: 4
 ---
 ```
 
-样式走 "LaTeX Paper" 路线：纸白 `#FFFFFF`、墨黑 `#111111`、弱化灰 `#6B6B66`、链接用 hyperref 蓝 `#0B5394`，直角、无阴影，标题与正文都用衬线体。这里有个实际问题要处理：Chirpy 用 `h1,h2,h3,h4,h5{font-family:Lato,…}` 强制标题无衬线，所以目录页以更高优先级把标题字体改回衬线，并借 `letter-spacing: -0.02em` 模拟 Computer Modern 的紧排感。标签页顶部还会自动打一个裸标题，目录页顺手隐藏掉它，换成居中的文档头，注明篇数与最近更新日期。
+样式模仿了 "LaTeX Paper" 风格：纸白 `#FFFFFF`、墨黑 `#111111`、弱化灰 `#6B6B66`、链接用 hyperref 蓝 `#0B5394`，直角、无阴影，标题与正文都用衬线体。这里有个实际问题要处理：Chirpy 用 `h1,h2,h3,h4,h5{font-family:Lato,…}` 强制标题无衬线，所以目录页以更高优先级把标题字体改回衬线，并借 `letter-spacing: -0.02em` 模拟 Computer Modern 的紧排感。标签页顶部还会自动打一个裸标题，目录页顺手隐藏掉它，换成居中的文档头，注明篇数与最近更新日期。
 
 列表每一项由编号、词牌名、日期和一段四十字的摘句组成，摘句由 Liquid 现场截取：
 
@@ -359,9 +359,3 @@ order: 4
 {% endraw %}
 
 分页是纯客户端实现，每页五条，无脚本兜底值得一提：条目默认全部可见，只有 JavaScript 运行后才给容器加 `is-paged` 类、逐条显隐。页码同时写进 URL 查询参数 `?p=`，用 `history.replaceState` 修改，监听 `popstate` 保证前进后退可用；翻页后若目录已被滚出视口，会平滑滚回，`prefers-reduced-motion` 时退回瞬时滚动；打印样式则强制展开全部条目。这一页固定亮色纸面，不跟随全站暗色切换，算是在质感与一致之间选了前者。
-
-## 小结
-
-回头看，这套定制没有动 Chirpy 一行源码，全部落在它预留的口子里：`_includes/metadata-hook.html` 管注入，`assets/css/jekyll-theme-chirpy.scss` 管样式，同名文件管覆盖。改动大致分四层：贴纸与页脚是即时生效的小件；评论区让默认体验与 GitHub 用户各取所需；样式与脚本在明暗、动效、无障碍之间找平衡；诗集则验证了另一件事——借 `collections` 和 `tabs`，新的内容类型可以不写布局就接入全站。同样的手法在 `_moments` 上又用了一次，只换了 `permalink` 与集合名。
-
-真正值得记下来的经验只有一条：动手前先把主题的入口摸清。入口找准了，任何定制都只是往既有结构上贴一小块东西；入口找不准，改得越多，日后升级就越难受。

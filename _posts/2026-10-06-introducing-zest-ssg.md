@@ -13,32 +13,30 @@ render_with_liquid: false
 - [Discord](https://discord.gg/ggrU3gWJUY)
 - [QQ群聊](https://qm.qq.com/q/O7CiBfOVSa)
 
-断更了很长一段时间，最近终于有时间来更新我开发的 Zest SSG。说干就干，我又做了一次大规模重构，顺带做了一批破坏性更新——反正现在还是在内测阶段，可以大刀阔斧地重构。重构的结果有好有坏：代码架构确实清晰了，但原先那些面条代码的脆弱也一并暴露出来，迁移之后不少功能被破坏，最后只好推倒重来。
+断更了很长一段时间，最近终于腾出时间更新我开发的 Zest SSG。说干就干，我又做了一次大规模重构，顺带推了一批破坏性更新——反正还在内测阶段，大刀阔斧地改也无妨。重构的结果有好有坏：代码架构确实清晰了，但原先面条代码的脆弱也一并暴露出来，迁移之后不少功能被破坏，最后只好推倒重来。
 
-代价先说在前面：现在的 Zest 仍在内测，接口和行为随时可能随着下一次更新变化。如果你已经装好 .NET 10，直接 `dotnet tool install -g zest` 就能全局安装。
+代价先说在前面：Zest 仍在内测，接口和行为随时可能随下一次更新变化。如果你已经装好 .NET 10，直接 `dotnet tool install -g zest` 就能全局安装。
 
 这篇文章把 Zest SSG 整体介绍一遍：它是什么、为什么这样设计、怎么用、现在能做什么，以及还缺什么。
 
-## 设计前提：模板即代码
+## 设计前提：模板就是代码
 
 Zest（全称 **Zest: Easy Static-site Toolkit**，这个全称前后改过几版，最后定在这个）是一个用 **F# + C#** 混合编写的静态网站生成器。它最核心的设计理念只有一句话：
 
 > **模板就是真正的代码，而不是字符串。**
 
-这句话针对的是模板语言的普遍处境。多数静态站点生成器会自带一门模板语言，你得在其中拼字符串、绕开类型检查、为循环和条件寻找各种变通方案。Zest 把这件事交回宿主语言：直接用 F# 写页面，循环、条件、函数、模式匹配、字符串插值全是原生语法，类型检查照常生效。写文章这件事，Markdown 仍然更舒服，所以 `.md` 一样支持。
+这句话针对的是模板语言的普遍处境。多数静态站点生成器自带一门模板语言，你得在其中拼字符串、绕开类型检查、为循环和条件寻找各种变通方案。Zest 把这件事交回宿主语言：直接用 F# 写页面，循环、条件、函数、模式匹配、字符串插值全是原生语法，类型检查照常生效。写文章这件事，Markdown 仍然更舒服，所以 `.md` 一样支持。
 
-整个项目建立在一个前提上：**模板语言和宿主语言应该是同一个东西。** 后面所有设计，都是从这个前提推出来的。
-
-## 为什么我要开发 Zest
+整个项目建立在一个前提上：**模板语言和宿主语言应该是同一个东西。** 后面所有设计都从这个前提推出来。
 
 选一个生成器，本质上是在选它替你做了哪些决定。Zest 的决定可以概括为四条：
 
 1. **页面就是普通的 F# 程序。** 用类型安全的 HTML DSL 组合结构，循环、条件、函数、数据都是语言原生能力，不需要任何模板语言的变通方案；当散文比代码更合适时，Markdown 依然可用。
-2. **模板格式只保留两种。** 一是 **Zestucks**（`.ztk`，是我开发的一个用 F# 实现的 Nunjucks 兼容层），语法兼容了我曾经在 Eleventy 中使用过的 Nunjucks；二是脚本层 `.zest.fsx`。两者边界划分得很清晰：模板负责页面结构，脚本负责逻辑。当然，`.zest.fsx` 本身也内置了用于生成 HTML 的 DSL，因此也可以用作模板，但写法上仍旧是 F# 自身的语法，与传统 HTML 相去甚远。
+2. **模板格式只保留两种。** 一是 **Zestucks**（`.html`，是我开发的一个用 F# 实现的 Nunjucks 兼容层），语法兼容了我曾在 Eleventy 中使用过的 Nunjucks；二是脚本层 `.zest.fsx`。两者边界划分得很清晰：模板负责页面结构，脚本负责逻辑。当然，`.zest.fsx` 本身也内置了用于生成 HTML 的 DSL，因此也可以用作模板，但写法仍是 F# 自身的语法，与传统 HTML 相去甚远。
 3. **构建产物是纯静态的 HTML。** 可以托管在任何提供静态网站托管服务的地方，不依赖特定运行时。
 4. **一个 `dotnet` CLI 工具搞定一切。** `init`、`build`、`serve`、`clean` 和 `preview`，从脚手架到预览都在同一条命令线上。
 
-这四条单看都不新鲜，凑在一起却少见：多数生成器在"模板语言的表达力"和"宿主语言的类型安全"之间二选一，Zest 把这个取舍直接取消了。
+这四条单看都不新鲜，凑在一起却少见：多数生成器在“模板语言的表达力”和“宿主语言的类型安全”之间二选一，Zest 把这个取舍直接取消了。
 
 ## 安装与快速开始
 
@@ -71,7 +69,7 @@ zest preview
 - **HTML DSL** — 声明式地组合 HTML，例如 `render [ h1C []; p [] ]`。
 - **内联 Markdown** — 在 `.zest.fsx` 页面里用 `md` 助手直接写 Markdown，并与 HTML DSL 混用：`md """# Title\n**bold**"""`。
 - **Markdown 文章** — 标准 `.md` 文件，支持 frontmatter。
-- **Zestucks 模板** — `.ztk` 文件支持完整的 Nunjucks 兼容特性：变量、过滤器、`{% if %}` / `{% for %}`、通过 `{% extends %}` / `{% block %}` 的模板继承、`{% include %}`、宏，以及 Zest API（`site`、`page`、`pages`、`tags`、`collections`）。
+- **Zestucks 模板** — `.html` 文件支持完整的 Nunjucks 兼容特性：变量、过滤器、`{% if %}` / `{% for %}`、通过 `{% extends %}` / `{% block %}` 的模板继承、`{% include %}`、宏，以及 Zest API（`site`、`page`、`pages`、`tags`、`collections`）。
 
 **样式**
 
@@ -90,7 +88,7 @@ zest preview
 - **Live reload** — `zest serve` 监视变化并自动重建。
 - **跨平台** — 支持 Windows x64、Linux x64/ARM64 和 macOS ARM64。
 
-## 写内容
+## 写内容：四种文件
 
 内容创作围绕四种文件展开：`.md` 文章、`.zest.fsx` 页面、`.zcss` 样式表，以及给模板供数的 `_prebuild.fsx`。
 
@@ -105,6 +103,8 @@ layout = "post"
 +++
 This is a blog post.
 ```
+
+标准 `.md` 文件，支持 frontmatter。
 
 ### 页面即 F#（`.zest.fsx`）
 
@@ -200,20 +200,20 @@ addGlobal "socials" [
 
 模板里这样读取：`{{ site.socials }}`。
 
-## 模板：Zestucks 与 F# 脚本
+## 两种模板格式：Zestucks 与 F# 脚本
 
 Zest 只有两种创作格式：
 
 | 格式            | 用途                                                             |
 |-----------------|------------------------------------------------------------------|
-| `.ztk` / `.njk` | **Zestucks** 模板——兼容 Nunjucks 语法的 markup。                  |
+| `.html` / `.njk` | **Zestucks** 模板——兼容 Nunjucks 语法的 markup。                  |
 | `.zest.fsx`     | F# 脚本——数据加载、逻辑和复杂计算。                               |
 
-Zestucks 是 Zest 给自家 Nunjucks 兼容引擎起的名字，它的语法和 Nunjucks 完全一致——变量、过滤器、`if` / `for`、继承、`block`、`include` 和宏——所以现有的 Nunjucks 模板可以原样工作。名字本身来自产生它的挫败感：我们曾经被 Nunjucks 基于 Node 的工具链 *卡住*（stuck），于是用 F# 重写了引擎，`-ucks` 结尾保留了对 Nunjucks 的致敬。
+Zestucks 是 Zest 给自家 Nunjucks 兼容引擎起的名字，语法和 Nunjucks 完全一致——变量、过滤器、`if` / `for`、继承、`block`、`include` 和宏——所以现有的 Nunjucks 模板可以原样工作。名字本身来自产生它的挫败感：我们曾被 Nunjucks 基于 Node 的工具链 *卡住*（stuck），于是用 F# 重写了引擎，`-ucks` 结尾保留了对 Nunjucks 的致敬。
 
-`.ztk` 和 `.njk` 是同一种语言，只是扩展名不同：新模板用 `.ztk`，从 Nunjucks 移植过来的文件继续用 `.njk`，中间没有翻译步骤。用 `.njk` 还有一个实际好处——不必另外配置 IDE 高亮，直接用编辑器原生的 Nunjucks 高亮即可。
+`.html` 和 `.njk` 是同一种语言，只是扩展名不同：从 Nunjucks 移植过来的文件继续用 `.njk`，中间没有翻译步骤。用 `.njk` 还有一个实际好处——不必另外配置 IDE 高亮，直接用编辑器原生的 Nunjucks 高亮即可。
 
-布局和 partial 是 `.ztk` 或 `.njk` 文件（直接使用 HTML 也行：`.html` 文件实际上也是经过 Zestucks 引擎处理的）。
+布局和 partial 是 `.html` 或 `.njk` 文件。
 
 ```html
 <!DOCTYPE html>
@@ -224,36 +224,38 @@ Zestucks 是 Zest 给自家 Nunjucks 兼容引擎起的名字，它的语法和 
   <link rel="stylesheet" href="/assets/css/main.css">
 </head>
 <body>
-  {{ include header.ztk }}
+  {{ include header.html }}
   <main>
     {{ content | safe }}
   </main>
-  {{ include footer.ztk }}
+  {{ include footer.html }}
 </body>
 </html>
 ```
 
 支持的 Zestucks 构造包括 `{{ include }}`、`{{ content }}`、`{% if %}` / `{% for %}`、`{% assign %}`、过滤器（`| t`、`| date`、`| readingTime`），以及来自 `_locales/*.toml` 的 i18n 字符串。
 
-### `.ztk` 与 `.njk` 的放置与引用
+### `.html` 与 `.njk` 的放置与引用
 
-| 位置                | `.ztk`      | `.njk`      | 含义                           |
+| 位置                | `.html`      | `.njk`      | 含义                           |
 |---------------------|-------------|-------------|--------------------------------|
 | `_layouts/`         | yes         | yes         | 布局，按 stem 名解析。         |
 | `_includes/`        | yes         | yes         | 裸引用 partial。               |
 | `content/`          | yes         | yes         | 变成有路由的页面。             |
-| 对它的引用          | `layout.ztk`| `layout.njk`| 两种拼写都行。                 |
+| 对它的引用          | `layout.html`| `layout.njk`| 两种拼写都行。                 |
 
-引用可以完全省略扩展名：`{% include "head" %}` 和 `{% extends "base" %}` 会先对 `_includes/` 再对 `_layouts/` 解析，先试 `.ztk` 再试 `.njk`。
+引用可以完全省略扩展名：`{% include "head" %}` 和 `{% extends "base" %}` 会先对 `_includes/` 再对 `_layouts/` 解析，先试 `.html` 再试 `.njk`。
 
-## 项目布局
+## 项目结构与架构
+
+先看项目布局。每一项都是可选的。完全没有 `_config.toml` 时站点仍然能构建：标题回退到默认值，内容在 `content/` 存在时从那里读取，否则从项目根目录读取。目录名是约定，永远不是配置。
 
 ```
 .
 ├── _config.toml           # 可选：站点元数据和构建选项
 ├── _prebuild.fsx          # 可选：预构建脚本（全局数据、钩子）
 ├── _finalize.fsx          # 可选：构建后脚本（验证、索引）
-├── _layouts/              # 布局：.ztk (Zestucks) 或 .zest.fsx (F# DSL)
+├── _layouts/              # 布局：.html (Zestucks) 或 .zest.fsx (F# DSL)
 ├── _includes/             # 用 {{ include }} 引入的 partial
 ├── _data/                 # 全局数据（nav.toml 等）
 ├── _locales/              # i18n 字符串表（en.toml 等）
@@ -261,8 +263,6 @@ Zestucks 是 Zest 给自家 Nunjucks 兼容引擎起的名字，它的语法和 
 ├── content/               # 页面（.zest.fsx）和文章（.md）
 └── _site/                 # 构建输出
 ```
-
-上面每一项都是可选的。完全没有 `_config.toml` 时站点仍然能构建：标题回退到默认值，内容在 `content/` 存在时从那里读取，否则从项目根目录读取。目录名是约定，永远不是配置。
 
 ### 配置
 
@@ -277,18 +277,7 @@ Zestucks 是 Zest 给自家 Nunjucks 兼容引擎起的名字，它的语法和 
 
 没有列出的东西——`[[taxonomies]]`、`[menu.*]`、`[[defaults]]`、`[pagination]`、`[params]`、`include`、`exclude`、`[template.zestucks] compatibility`——都在顶层读取。
 
-## 命令
-
-| 命令                | 描述                                       |
-|---------------------|--------------------------------------------|
-| `zest init [path]`  | 从内置 starter 脚手架一个新站点。          |
-| `zest init --empty` | 只脚手架目录布局。                         |
-| `zest build`        | 构建站点到 `_site/`。                      |
-| `zest serve`        | 构建并启动带 live reload 的开发服务器。    |
-| `zest preview`      | 服务构建后的站点，不重建。                 |
-| `zest clean`        | 移除构建输出。                             |
-
-## 架构
+### 架构
 
 | 项目              | 语言 | 职责                                                                 |
 |-------------------|------|----------------------------------------------------------------------|
@@ -334,7 +323,18 @@ libs/Zest.Core/          F#   SlugFormatter, TextMetrics, DateFormatter
 | `Zest.App/Command`          | 每个子命令一个类型（`build`、`clean`、`init`、`serve`）。            |
 | `Zest.App/Starter`          | `zest init` 复制出来的单一脚手架站点。                               |
 
-## 参考文档
+## 命令
+
+| 命令                | 描述                                       |
+|---------------------|--------------------------------------------|
+| `zest init [path]`  | 从内置 starter 脚手架一个新站点。          |
+| `zest init --empty` | 只脚手架目录布局。                         |
+| `zest build`        | 构建站点到 `_site/`。                      |
+| `zest serve`        | 构建并启动带 live reload 的开发服务器。    |
+| `zest preview`      | 服务构建后的站点，不重建。                 |
+| `zest clean`        | 移除构建输出。                             |
+
+## 文件类型与路由
 
 ### 文件类型
 
@@ -342,8 +342,8 @@ Zest 区分两种 F# 脚本。只有一种会成为页面。
 
 | 文件模式       | 用途                                                           | 处理                                                |
 |----------------|----------------------------------------------------------------|-----------------------------------------------------|
-| `*.ztk` / `*.html` | Zestucks 原生模板（过滤器、宏、继承、Zest API）             | 由 Zestucks 引擎渲染                                |
-| `*.njk`        | 兼容 Nunjucks 的模板——与 `.ztk` 同一引擎                       | 由 Zestucks 引擎渲染                                |
+| `*.html` | Zestucks 原生模板（过滤器、宏、继承、Zest API）             | 由 Zestucks 引擎渲染                                |
+| `*.njk`        | Nunjucks 的兼容层拓展名——与 `.html` 同一引擎                       | 由 Zestucks 引擎渲染                                |
 | `*.zest.fsx`   | **Zest Pages**——带路由语义的 F# 脚本模板                       | 通过 `dotnet fsi` 编译，然后赋予 URL                |
 | `*.fsx`        | 普通 F# 脚本——**Zest 不会给它们路由**                          | 发现时忽略                                          |
 | `*.md`         | 标准 Markdown                                                  | 渲染为 HTML                                         |
@@ -381,24 +381,7 @@ Zest 生成目录风格 URL，所以上面每个路由都写成 `<route>/index.h
 - **`@permalink` 覆盖一切。** 当 URL 必须精确时使用它——starter 的 feed 就这么做（`// @permalink /rss.xml`），一个必须是 `/404.html` 而不是 `/404/` 的 404 页面也会这么做。
 - **`.zest.fsx` 语义等同于路由。** 把 `scripts/build.fsx` 重命名为 `scripts/build.zest.fsx` 会把它发布到 `/scripts/build/`。不应该存在的 URL 就留作普通 `.fsx`。
 
-当两个文件会产生相同输出时——比如 `about.ztk` 旁边有 `about.zest.fsx`——Zest 不做仲裁。构建引擎选择后者写入的页面，所以给每个路由恰好一个源文件。
-
-### ZCSS 参考
-
-| 特性                 | 语法 / 示例                                                               |
-|----------------------|---------------------------------------------------------------------------|
-| 变量（SCSS）         | `$name: value;`                                                           |
-| 变量（F#）           | `let name = value`                                                        |
-| 数学                 | `let x = 0.25r * 4`                                                       |
-| 颜色函数             | `lighten(#hex, %)`、`darken(#hex, %)`、`mix(a, b, %)`                     |
-| 管道操作符           | `value \|> fn(args)` → `fn(value, args)`                                  |
-| 单位简写             | `r` → `rem`，`p` → `%`                                                    |
-| 属性简写             | `py` → `padding-block`，`mx` → `margin-inline`，`bgc` → `background-color`|
-| 嵌套                 | 缩进（Python/SCSS 风格）或大括号（F# 风格）模式                                                          |
-| Mixin                | `@mixin`、`@include`                                                      |
-| 循环                 | `@each`、`@for`                                                           |
-| 条件                 | `@if`、`@else`                                                            |
-| 内置模块             | `@use "zest:utilities"`、`@use "zest:palette"` 等                         |
+当两个文件会产生相同输出时——比如 `about.html` 旁边有 `about.zest.fsx`——Zest 不做仲裁。构建引擎选择后者写入的页面，所以给每个路由恰好一个源文件。
 
 ### 布局路由
 
@@ -407,53 +390,12 @@ Zest 总是用 Zestucks 渲染，所以路由只取决于文件扩展名：
 | 布局扩展名        | 处理                                                        |
 |-------------------|-------------------------------------------------------------|
 | `.zest.fsx`、`.fsx` | 由 `dotnet fsi` 作为 F# 脚本求值。                        |
-| `.ztk`、`.njk`    | 由 Zestucks 渲染——同一种语言，两个扩展名。                  |
+| `.html`、`.njk`    | 由 Zestucks 渲染——同一种语言，两个扩展名。                  |
 | `.html`、`.htm`   | 当存在 `{{ }}` / `{% %}` 语法时由 Zestucks 渲染，否则原样复制。 |
 
 这个表只描述 `_layouts/`。布局文件没有路由，所以普通的 `.fsx` 布局没问题——在内容目录里它根本不会是页面（见 *文件类型*）。
 
-### Zestucks 兼容模式
-
-`_config.toml` 中的 `[template.zestucks] compatibility` 控制 Zestucks 多严格地镜像 Nunjucks（说句实话，这个选项有点过度设计，实际开发中两者区别不大；下一次版本更新将直接移除它，自动注册所有扩展过滤器）：
-
-| 值       | 含义                                                        |
-|----------|-------------------------------------------------------------|
-| `zest`   | 默认。Zest 扩展过滤器（`pages_by_tag`、`recent`、`by_collection`、`search`）可用。 |
-| `strict` | 只注册 Nunjucks 兼容的过滤器集。                            |
-
-### HTML DSL 参考
-
-整个 DSL 中有两种拼写是等价的：`<tag>Class` 和 `<tag>C`（`divC` ≡ `divClass`，`imgC` ≡ `imgClass`，`aC` ≡ `aClass`）。两者产生逐字节相同的 HTML——选一个，在一个文件里保持一致。对于文本助手，`<tag>Text` 接受文本内容，而 `<tag>TextClass` / `<tag>TextC` 接受 CSS class 加文本内容（`pText` vs `pTextClass`）。
-
-```fsharp
-// 元素
-h1 [ text "Title" ]
-p  [ text "Paragraph" ]
-a  [ href "https://example.com"; text "Link" ]
-
-// 文本快捷方式
-divText "Plain"                            // <div>Plain</div>
-pTextClass "lead" "Intro"                  // <p class="lead">Intro</p>
-aTextC "btn btn-primary" "/about" "About"  // <a href="/about" class="btn btn-primary">About</a>
-
-// 属性
-div [ cls "container"; id' "main"; data' "section" "hero" ] [ ... ]
-
-// CSS class 快捷方式
-divClass "card"  [ p [ text "Content" ] ]   // <div class="card">
-spanC   "badge" [ text "New" ]              // <span class="badge">
-
-// 列表推导
-ul [ for item in items -> li [ text item ] ]
-
-// 条件
-if condition then
-    p [ text "Yes" ]
-else
-    p [ text "No" ]
-```
-
-### 构建钩子
+## 构建钩子与输出塑形
 
 Zest 最多运行两个动态脚本。两者都是可选的，都在项目根目录下，名称完全如下，都不会被路由或发布。
 
@@ -473,7 +415,7 @@ defaults → _config.toml → _prebuild.fsx → render + write _site/ → _final
 
 理论上 `_finalize.fsx` 还能做更高级的事情：构建完成后自动推送到远程 git 仓库，或者通过终端上传到 Cloudflare/Netlify——它毕竟是一个功能完备的 .NET FSI 交互环境，具备完整的编程能力。我们正在考虑要不要把这些功能做成内置接口以简化流程，如果你有更好的意见，欢迎在社区或是进群发表自己的一些想法，我们会纳入参考。
 
-#### `_prebuild.fsx` API
+### `_prebuild.fsx` API
 
 在构建前运行。这里添加的数据对模板可见，形式为 `{{ site.<key> }}`。
 
@@ -488,7 +430,7 @@ defaults → _config.toml → _prebuild.fsx → render + write _site/ → _final
 
 `loadJson`、`loadToml`、`loadEnv`、`consoleLog` 和 `exec` 在两个钩子里是相同的函数，签名相同。
 
-#### `_finalize.fsx` API
+### `_finalize.fsx` API
 
 站点完全写入 `_site/` 后运行一次。它写的一切都必须落在输出目录内——`writeFile` 拒绝 `_site/` 之外的任何路径——所以它可以重塑构建输出，但永远不能改项目源码。
 
@@ -501,7 +443,7 @@ defaults → _config.toml → _prebuild.fsx → render + write _site/ → _final
 | `build`     | `BuildInfo`   | `duration_ms` `page_count` `asset_count` `output_bytes` `started_at` |
 | `output_dir`| `string`      | 构建输出的绝对路径                               |
 
-助手：
+工具：
 
 | 函数                        | 用途                                                          |
 |-----------------------------|---------------------------------------------------------------|
@@ -530,7 +472,7 @@ defaults → _config.toml → _prebuild.fsx → render + write _site/ → _final
 | `formatJs js`               | 格式化 JavaScript（2 空格缩进）。                                |
 | `minifyJs js`               | 压缩 JavaScript。                                              |
 
-一个完整的"格式化 + 压缩"构建，也就是被移除的四个 `_config.toml` 键过去做的事情：
+一个完整的“格式化 + 压缩”构建，也就是被移除的四个 `_config.toml` 键过去做的事：
 
 ```fsharp
 rewriteFiles ".html" formatHtml
@@ -576,7 +518,67 @@ let purge = exec "node" [ "scripts/purge-cdn.js"; site.url ]
 if purge.code <> 0 then consoleLog (sprintf "CDN purge failed: %s" purge.stderr)
 ```
 
-`finalize_on_error`（默认 `true`）控制当主构建已经报告错误时钩子是否仍然运行，这正是"即使构建报错，也能验证已写入内容"成为可能的原因。
+`finalize_on_error`（默认 `true`）控制当主构建已经报告错误时钩子是否仍然运行，这正是“即使构建报错，也能验证已写入内容”成为可能的原因。
+
+## ZCSS、兼容模式与 HTML DSL 参考
+
+### ZCSS 参考
+
+| 特性                 | 语法 / 示例                                                               |
+|----------------------|---------------------------------------------------------------------------|
+| 变量（SCSS）         | `$name: value;`                                                           |
+| 变量（F#）           | `let name = value`                                                        |
+| 数学                 | `let x = 0.25r * 4`                                                       |
+| 颜色函数             | `lighten(#hex, %)`、`darken(#hex, %)`、`mix(a, b, %)`                     |
+| 管道操作符           | `value \|> fn(args)` → `fn(value, args)`                                  |
+| 单位简写             | `r` → `rem`，`p` → `%`                                                    |
+| 属性简写             | `py` → `padding-block`，`mx` → `margin-inline`，`bgc` → `background-color`|
+| 嵌套                 | 缩进（Python/SCSS 风格）或大括号（F# 风格）模式                                                          |
+| Mixin                | `@mixin`、`@include`                                                      |
+| 循环                 | `@each`、`@for`                                                           |
+| 条件                 | `@if`、`@else`                                                            |
+| 内置模块             | `@use "zest:utilities"`、`@use "zest:palette"` 等                         |
+
+### Zestucks 兼容模式
+
+`_config.toml` 中的 `[template.zestucks] compatibility` 控制 Zestucks 多严格地镜像 Nunjucks（说句实话，这个选项有点过度设计，实际开发中两者区别不大；下一次版本更新将直接移除它，自动注册所有扩展过滤器）：
+
+| 值       | 含义                                                        |
+|----------|-------------------------------------------------------------|
+| `zest`   | 默认。Zest 扩展过滤器（`pages_by_tag`、`recent`、`by_collection`、`search`）可用。 |
+| `strict` | 只注册 Nunjucks 兼容的过滤器集。                            |
+
+### HTML DSL 参考
+
+整个 DSL 中有两种拼写是等价的：`<tag>Class` 和 `<tag>C`（`divC` ≡ `divClass`，`imgC` ≡ `imgClass`，`aC` ≡ `aClass`）。两者产生逐字节相同的 HTML——选一个，在一个文件里保持一致。对于文本助手，`<tag>Text` 接受文本内容，而 `<tag>TextClass` / `<tag>TextC` 接受 CSS class 加文本内容（`pText` vs `pTextClass`）。
+
+```fsharp
+// 元素
+h1 [ text "Title" ]
+p  [ text "Paragraph" ]
+a  [ href "https://example.com"; text "Link" ]
+
+// 文本快捷方式
+divText "Plain"                            // <div>Plain</div>
+pTextClass "lead" "Intro"                  // <p class="lead">Intro</p>
+aTextC "btn btn-primary" "/about" "About"  // <a href="/about" class="btn btn-primary">About</a>
+
+// 属性
+div [ cls "container"; id' "main"; data' "section" "hero" ] [ ... ]
+
+// CSS class 快捷方式
+divClass "card"  [ p [ text "Content" ] ]   // <div class="card">
+spanC   "badge" [ text "New" ]              // <span class="badge">
+
+// 列表推导
+ul [ for item in items -> li [ text item ] ]
+
+// 条件
+if condition then
+    p [ text "Yes" ]
+else
+    p [ text "No" ]
+```
 
 ## 从源码构建
 
@@ -606,9 +608,9 @@ dotnet publish src/Zest.App/Zest.App.csproj -c Release -r win-x64 --self-contain
 3. 为 `_prebuild.fsx` 和 `_finalize.fsx` 脚本添加更多功能。
 4. 添加完整的单元测试。
 
-## 欢迎来尝试和贡献
+## 参与贡献
 
-Zest 目前仍处于内测阶段，架构刚刚经历一次大重构，不少功能还在逐步恢复和完善中。但核心的构建管线、F# DSL、ZCSS、Zestucks 模板引擎以及构建钩子都已经可用，足够用来搭建个人博客、文档站或者小型静态站点。
+Zest 目前仍处于内测阶段，架构刚经历一次大重构，不少功能还在逐步恢复和完善中。但核心的构建管线、F# DSL、ZCSS、Zestucks 模板引擎以及构建钩子都已经可用，足够用来搭建个人博客、文档站或者小型静态站点。
 
 如果你对 F#、.NET 或者静态站点生成器感兴趣，欢迎来试试：
 

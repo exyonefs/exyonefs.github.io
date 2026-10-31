@@ -7,13 +7,15 @@ tags: [开源, Cloudflare, TypeScript]
 
 [项目仓库](https://github.com/exyonefs/quotify)
 
-Quotify 取自 `quote`，中文名 **引语**。它的功能定位参考一言（Hitokoto）：随机返回一条或多条引语，可以按分类、标签筛选，也能按关键词搜索。不过原生接口是一套自己的约定，**并不是** Hitokoto 的兼容实现；只有确实需要零改动迁移既有一言客户端时，才会用到 `/v1/hitokoto` 这层兼容壳。
+想做一个仿一言 API：随机返回一条或多条引语，能按分类、标签筛选，也能按关键词搜索。功能不复杂，麻烦的是部署——为这点读流量单独维护一个数据库，不值。
 
-它部署在 **Cloudflare Workers** 上，数据源不是数据库，而是**一个或多个 `data.json`**——可以配置多个不同来源，随机抽取时合并成一个总池；运行时通过 **Cloudflare KV 懒加载缓存**，所有筛选、搜索、随机操作都在 Worker 内存里完成。整条链路不使用 D1，也不依赖任何 Node.js 专有 API。
+Quotify 就是冲着这个场景去的。它把数据源放在**一个或多个 `data.json`** 里，部署在 **Cloudflare Workers** 上，运行时用 **Cloudflare KV 做懒加载缓存**：筛选、搜索、随机都在 Worker 内存里算完，整条链路不用 D1，也不依赖任何 Node.js 专有 API。
 
-## 技术选型
+取名取自 `quote`，中文名 **引语**。功能定位参考一言（Hitokoto），但原生接口是一套自己的约定，**并不是** Hitokoto 的兼容实现；只有确实需要零改动迁移既有一言客户端时，才会用到 `/v1/hitokoto` 这层兼容壳。多个数据来源可以同时配置，随机抽取时合并成一个总池。
 
-先把这套方案的技术底盘列清楚，后面的设计取舍都建立在这些前提上：
+## 技术底盘：Workers + KV + 一份 JSON
+
+后面的设计取舍都建立在这套底盘上，先把清单列清楚：
 
 - 运行时：Cloudflare Workers（V8 Isolates）
 - 语言：TypeScript（`strict: true`，禁用 `any`）
@@ -25,11 +27,11 @@ Quotify 取自 `quote`，中文名 **引语**。它的功能定位参考一言�
 - 工程化：ESLint + Prettier + TypeScript 严格模式（含 `noUncheckedIndexedAccess`），CI 全量校验
 - bundle：约 93 KiB（gzip 约 23 KiB），远低于 1 MB 上限
 
-这些能力有一个共同点：KV、Rate Limiting 都以绑定（binding）的形式写在 `wrangler.toml` 里，全部落在 Workers 平台自身，没有额外要维护的外部服务。这也是我愿意把它托管在 Cloudflare 上的主要原因——引语接口本身轻，不值得为它单独跑一台机器。
+这些能力有一个共同点：KV、Rate Limiting 都以绑定（binding）的形式写在 `wrangler.toml` 里，全部落在 Workers 平台自身，没有额外要维护的外部服务。引语接口本身轻，不值得为它单独跑一台机器。这也是我愿意把它托管在 Cloudflare 上的主要原因。
 
-## 一次请求的完整路径
+## 一次请求走过的路
 
-数据从来源仓库到响应，中间只经过一层 Worker 和一层 KV，链路如下：
+数据从来源仓库到响应，中间只经过一层 Worker 和一层 KV：
 
 ```text
 来源清单 sources.json（默认，DATA_MANIFEST_URL）
@@ -103,7 +105,9 @@ quotify/
 
 `worker-configuration.d.ts` 由 `npm run cf-typegen` 生成、已在 `.gitignore` 中：业务代码只依赖 `src/types/env.ts` 这份契约，避免生成物与配置漂移。
 
-## 命名：契约用 quote，品牌用 quotify
+## 接口契约
+
+### 命名约定：契约用 quote，品牌用 quotify
 
 这个项目只用两个词，各司其职，避免同一个概念出现多种叫法：
 
@@ -120,7 +124,7 @@ quotify/
 
 > 中文名「**引语**」是 `quote` 的直译，仅用于对外称呼与文档表述，不参与任何标识符命名。
 
-## 接口设计
+### 统一外壳与响应头
 
 所有接口（含错误）统一返回同一个外壳：
 
@@ -137,7 +141,9 @@ quotify/
 - 路径末尾的斜杠会被忽略：`/api/quotes` 与 `/api/quotes/` 等价（Hono 以 `strict: false` 启动）。
 - 参数取值有长度与格式上限：`limit` / `offset` 只接受十进制整数（`0x10`、`1e3` 会被拒绝），`offset` 上限 10000，`q` / `category` / `tag` 单个取值上限 100 个字符。
 
-### `GET /` — 根域自动重定向
+### 公开接口
+
+#### `GET /` — 根域自动重定向
 
 直接访问根域（例如 `https://quotify-api.<your-subdomain>.workers.dev/`）会 **302** 跳转到 `/api/quotes/`，避免用户看到裸 404。跳转只改写路径、**保留原始查询串**，因此 `/?limit=5&format=text` 等价于 `/api/quotes/?limit=5&format=text`。
 
@@ -145,7 +151,7 @@ quotify/
 - 出于安全考虑只接受站内绝对路径（以单个 `/` 开头），配置成外链等非法值会回退到默认值，避免开放重定向。反斜杠（`/\evil.com`）与控制字符同样被拒绝——浏览器会把 `\` 规范化成 `/`，从而绕过 `//` 检查。
 - `HEAD /` 与 `GET /` 行为一致（Hono 会按 GET 处理并剥离响应体）。
 
-### `GET /api/quotes` — 随机一言
+#### `GET /api/quotes` — 随机一言
 
 | 参数       | 类型   | 默认   | 说明                                   |
 | :--------- | :----- | :----- | :------------------------------------- |
@@ -156,7 +162,7 @@ quotify/
 
 `data` 始终为数组。`format=text` 时直接返回纯文本 `content`（多条以换行分隔），`Content-Type: text/plain; charset=utf-8`。`category` / `tag` 的取值个数超过 50 个时返回 `400`。
 
-### `GET /api/quotes/search` — 关键词搜索
+#### `GET /api/quotes/search` — 关键词搜索
 
 | 参数       | 类型   | 默认     | 说明                  |
 | :--------- | :----- | :------- | :-------------------- |
@@ -168,13 +174,15 @@ quotify/
 
 匹配方式是在 `content` / `author` / `source` 中做**大小写不敏感**的子串匹配。`category` 与 `tag` 之间是 **AND**，同一参数内多个值是 **OR**。
 
-### `GET /api/quotes/categories` / `GET /api/quotes/tags`
+#### `GET /api/quotes/categories` / `GET /api/quotes/tags`
 
 返回去重、按拼音排序的字符串数组。结果在同一数据集内稳定，因此响应带 `Cache-Control: public, max-age=<min(3600, DATA_TTL)>`（默认 `300`）与 `ETag`；客户端带 `If-None-Match` 再次请求时返回 **304**（无正文），并同样带 CORS 与安全头。缓存时长与数据集 TTL 取小，是为了避免客户端缓存得比服务端刷新周期还久。
 
 这里的 `ETag` 由**全量内容**哈希而来，而不是只看 `version` / `updated_at` / 条数。因此维护者改了分类或标签、却没更新 `updated_at`，ETag 也会变化，不会一直返回过期目录。`If-None-Match` 采用宽松匹配：容忍 `W/` 前缀差异、多值列表与代理追加的 `-gzip` 之类后缀。
 
-### `GET /api/health` — 健康检查
+### 运维接口
+
+#### `GET /api/health` — 健康检查
 
 该接口只读缓存状态（优先命中热缓存，不触发回源）。`data.sources` 表示「已缓存来源数 / 配置来源总数」。
 
@@ -206,7 +214,7 @@ quotify/
 
 真正需要告警的组合是 `state === "cold"` **且** `manifest_cached === true`：说明来源已经枚举出来了，却一个都没加载成功。
 
-### `POST /api/admin/refresh` — 强制刷新缓存（需鉴权）
+#### `POST /api/admin/refresh` — 强制刷新缓存（需鉴权）
 
 刷新对**每个来源**分别执行「重新拉取 → 校验通过后覆盖自己的 KV」（`put` 会重置值与 TTL）。它**不会**先删键：这样上游数据非法时，该来源的缓存仍保留上一份合法数据，不会出现空缓存窗口。若配置了来源清单，清单也会一并刷新。
 
@@ -232,13 +240,13 @@ quotify/
 }
 ```
 
-### `GET /api/admin/stats` — 数据统计（需鉴权）
+#### `GET /api/admin/stats` — 数据统计（需鉴权）
 
 返回 `{ total, categories, tags, version, updated_at, cached, cache_loaded_at, sources, failures, manifest }`。其中 `version` / `updated_at` 是各来源的**聚合值**（取较大者），按来源的明细在 `sources` 与 `failures` 中；`manifest` 是清单状态 `{ url, count, error }`，未配置清单时为 `null`。来源出问题时先看这里。
 
 鉴权方式是请求头 `Authorization: Bearer <ADMIN_TOKEN>`，Token 采用恒定时间比较。
 
-## Hitokoto 兼容层
+### 兼容层：给一言客户端留一扇门
 
 `GET /v1/hitokoto` 以 [Hitokoto](https://developer.hitokoto.cn/) 的契约返回**裸对象**（不套统一外壳），便于既有的一言客户端零改动迁移。字段映射关系如下：
 
@@ -272,7 +280,9 @@ curl "$BASE/v1/hitokoto?encode=js&callback=hitokoto_cb"
 
 兼容层只做字段与参数映射，不改原生接口；`/` 的行为也不变（仍是 302 到 `/api/quotes/`，与 `v1.hitokoto.cn` 直接返回 JSON 不同）。
 
-## 数据放在哪：仓库格式与校验
+## 数据与配置
+
+### 数据集格式与校验
 
 数据集放在独立仓库 **`quotify-data`**：按 `category` 拆分到 `data/` 下的多个文件，根目录的 `sources.json`（**来源清单**）列出这些文件的地址。
 
@@ -320,7 +330,9 @@ quotify-data/
 
 仓库里 `data/data.json` 是一份可直接推送的示例数据集（10 条），并且**已被纳入 CI 校验**（`npm run validate:data`，见 `tests/data.test.ts`）；`data/schema.json` 是等价的 JSON Schema，供编辑器与外部工具复用。
 
-KV 键的设计值得一提，因为键的稳定性直接决定了增删来源是否安全：
+### KV 键设计
+
+KV 键的稳定性直接决定了增删来源是否安全，所以单独说一下：
 
 | 键                               | 值          | 说明                                                                                   |
 | :------------------------------- | :---------- | :------------------------------------------------------------------------------------- |
@@ -330,7 +342,7 @@ KV 键的设计值得一提，因为键的稳定性直接决定了增删来源�
 
 键后缀由**来源 URL** 派生，而不是数组下标，因此增删或重排来源都不会让某个来源读到别人的缓存；读取时还会比对 meta 里的 `source_url`，即使哈希碰撞也只会退化成一次「未命中 + 回源」。
 
-## 环境变量与密钥
+### 环境变量与密钥
 
 | 名称                  | 类型              | 默认                               | 说明                                                                                                                                     |
 | :-------------------- | :---------------- | :--------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
@@ -348,7 +360,9 @@ KV 键的设计值得一提，因为键的稳定性直接决定了增删来源�
 
 生产环境必须执行 `npx wrangler secret put ADMIN_TOKEN`；本地开发请把 `ADMIN_TOKEN=...` 写进 `.dev.vars`（参考 `.dev.vars.example`，该文件已在 `.gitignore` 中）。
 
-有三处设计是刻意的，值得单独说明：
+### 三处刻意设计
+
+有三处设计是刻意的，值得单独说明。
 
 `ADMIN_TOKEN` **不再提供默认值**。遗漏 `wrangler secret put` 时，宁可让管理接口 500，也不能带着一个公开已知的口令上线。
 
@@ -385,7 +399,7 @@ npm run cf-typegen   # 修改 wrangler.toml 后重新生成 worker-configuration
 
 `worker-configuration.d.ts` 由 `wrangler types` 生成（包含 `KVNamespace`、`RateLimit` 等运行时类型以及全局 `Env`），已在 `.gitignore` 中，修改 `wrangler.toml` 后需要重新生成。业务代码只依赖 `src/types/env.ts` 这份契约，不直接使用生成的字面量类型。
 
-## Fork 一份，部署到自己的账号
+## Fork 与部署：换成你自己的数据
 
 下面这段面向「Fork 一份、换成自己的数据集、部署到自己的 Cloudflare 账号」的场景。每一步都对应 `wrangler.toml` 里的注释，照着改即可。
 
@@ -398,7 +412,7 @@ npm run cf-typegen   # 修改 wrangler.toml 后重新生成 worker-configuration
 
 ### 准备你自己的数据集
 
-新建一个 GitHub 仓库（例如 `my-quotes-data`），在里面放数据集文件。**推荐按 `category` 拆分**到一个子目录（如 `data/`），一个分类一个文件，格式见上文「数据放在哪」——根字段必须是 `quotes`，每条记录至少要有非空的 `id` 与 `content`。
+新建一个 GitHub 仓库（例如 `my-quotes-data`），在里面放数据集文件。**推荐按 `category` 拆分**到一个子目录（如 `data/`），一个分类一个文件，格式见上文「数据与配置」——根字段必须是 `quotes`，每条记录至少要有非空的 `id` 与 `content`。
 
 可以直接复制仓库里的 `data/data.json` 当**单文件**模板，或参考作者仓库 `quotify-data` 的**按分类拆分**结构。
 
@@ -518,6 +532,25 @@ curl -X POST -H "Authorization: Bearer <你的 ADMIN_TOKEN>" "$BASE/api/admin/re
 
 清单里的来源会与 `DATA_SOURCES` **合并**（去重后最多 20 个，超出部分丢弃并告警）。清单不可用或内容格式非法时**不会影响服务**：自动降级为「只用 `DATA_SOURCES`」或「沿用上一份合法清单」，具体原因可在 `/api/admin/stats` 的 `manifest.error` 中看到。
 
+## 上线前的验收清单
+
+1. `npm test` —— 全部用例通过（当前 138 个）。
+2. `npm run typecheck` —— 无类型错误。
+3. `npm run lint && npm run format:check` —— 无静态检查 / 风格问题。
+4. `curl -i "$BASE/"` —— 返回 `302` 且 `Location` 指向 `/api/quotes/`。
+5. `curl "$BASE/api/health"` —— `status=200`、`data.service="quotify"`，`data.state` 为 `warm` / `cold`，`data.sources` 显示「已缓存 / 配置总数」。
+6. 首次 `curl "$BASE/api/quotes"` —— 返回数据且 KV 被写入；再次请求 `data.cached` 为 `true`。
+7. `curl -i "$BASE/api/quotes"` —— 含 `Cache-Control: no-store`（随机结果不能被缓存）。
+8. `curl -i -X OPTIONS "$BASE/api/quotes"` —— 返回 `Access-Control-Allow-Origin: *`。
+9. `curl -i "$BASE/api/health"` —— 含 `X-Content-Type-Options: nosniff` 与 `Referrer-Policy: no-referrer`。
+10. `curl -i "$BASE/api/quotes/categories"` —— 含 `Cache-Control: public, max-age=300`（默认 TTL）与 `ETag`；带上该 `ETag` 的 `If-None-Match` 再次请求 —— 返回 `304`。
+11. `curl -X POST "$BASE/api/admin/refresh"`（无 Token）—— 返回 `401`。
+12. `curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/admin/refresh"` —— 返回 `200` 且 `total` 与数据仓库条数一致。
+13. 把 `data.json` 中某条记录的 `content` 置空并提交 —— 管理刷新接口应返回 `500`，且 KV 中仍是上一份合法数据。
+14. 配好两个 `DATA_SOURCES` 后 `curl "$BASE/api/admin/stats"` —— `sources` 有两项，`total` 等于两个数据集条数之和（若有重复 `id` 会被去重，看 `duplicates`）。
+15. （可选）配置 `DATA_MANIFEST_URL` 后 `curl "$BASE/api/admin/stats"` —— `manifest` 显示清单地址、解析出的来源数，且清单里新增的来源已被合并进 `total`。
+16. （可选）`curl "$BASE/v1/hitokoto?c=d"` —— 返回含 `hitokoto` / `type` / `from` 的裸对象。
+
 ## 常见问题
 
 - **访问根域 404？** 根域会自动 302 到 `/api/quotes/`；若你改过 `ROOT_REDIRECT`，确认它是站内绝对路径（以单个 `/` 开头）。
@@ -528,7 +561,7 @@ curl -X POST -H "Authorization: Bearer <你的 ADMIN_TOKEN>" "$BASE/api/admin/re
 - **`/api/health` 一直是 `cold`？** 冷启动（或 isolate 刚被回收）时的正常状态，只要 `manifest_cached` 为 `false` 就只是「还没加载过」；若它已经是 `true` 却仍为 `cold`，再去 `/api/admin/stats` 看 `failures`。
 - **改了 `wrangler.toml` 后类型报错？** 执行 `npm run cf-typegen` 重新生成 `worker-configuration.d.ts`。
 
-## 常用 curl 命令速查
+## curl 速查
 
 ```bash
 BASE=https://quotify-api.<your-subdomain>.workers.dev
@@ -585,27 +618,10 @@ curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/admin/refresh"
 curl -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/admin/stats"
 ```
 
-## 上线前的验收清单
+## 写在最后：边界与代价
 
-1. `npm test` —— 全部用例通过（当前 138 个）。
-2. `npm run typecheck` —— 无类型错误。
-3. `npm run lint && npm run format:check` —— 无静态检查 / 风格问题。
-4. `curl -i "$BASE/"` —— 返回 `302` 且 `Location` 指向 `/api/quotes/`。
-5. `curl "$BASE/api/health"` —— `status=200`、`data.service="quotify"`，`data.state` 为 `warm` / `cold`，`data.sources` 显示「已缓存 / 配置总数」。
-6. 首次 `curl "$BASE/api/quotes"` —— 返回数据且 KV 被写入；再次请求 `data.cached` 为 `true`。
-7. `curl -i "$BASE/api/quotes"` —— 含 `Cache-Control: no-store`（随机结果不能被缓存）。
-8. `curl -i -X OPTIONS "$BASE/api/quotes"` —— 返回 `Access-Control-Allow-Origin: *`。
-9. `curl -i "$BASE/api/health"` —— 含 `X-Content-Type-Options: nosniff` 与 `Referrer-Policy: no-referrer`。
-10. `curl -i "$BASE/api/quotes/categories"` —— 含 `Cache-Control: public, max-age=300`（默认 TTL）与 `ETag`；带上该 `ETag` 的 `If-None-Match` 再次请求 —— 返回 `304`。
-11. `curl -X POST "$BASE/api/admin/refresh"`（无 Token）—— 返回 `401`。
-12. `curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/admin/refresh"` —— 返回 `200` 且 `total` 与数据仓库条数一致。
-13. 把 `data.json` 中某条记录的 `content` 置空并提交 —— 管理刷新接口应返回 `500`，且 KV 中仍是上一份合法数据。
-14. 配好两个 `DATA_SOURCES` 后 `curl "$BASE/api/admin/stats"` —— `sources` 有两项，`total` 等于两个数据集条数之和（若有重复 `id` 会被去重，看 `duplicates`）。
-15. （可选）配置 `DATA_MANIFEST_URL` 后 `curl "$BASE/api/admin/stats"` —— `manifest` 显示清单地址、解析出的来源数，且清单里新增的来源已被合并进 `total`。
-16. （可选）`curl "$BASE/v1/hitokoto?c=d"` —— 返回含 `hitokoto` / `type` / `from` 的裸对象。
+Quotify 想解决的问题很具体：想要一个能随机吐引语、能按分类和标签筛选、能搜索的接口，又不想为此维护数据库。数据直接以 JSON 落在能公网访问的地方。运行时靠 KV 缓存扛住读流量，筛选与随机都在内存里算完。
 
-## 写在最后
+代价也都摆在明面上。数据规模受限于「一次能解析多少 JSON」，因此它适合几千到几万条量级的引语库，而不是海量语料；缓存的更新时间最坏是 `DATA_TTL`（默认 300 秒）加一个热缓存 TTL（60 秒），改完数据不会立刻全网可见——真要立即生效，就调一次 `/api/admin/refresh`。
 
-Quotify 想解决的问题很具体：想要一个能随机吐引语、能按分类和标签筛选、能搜索的接口，又不想为此维护数据库。所以数据直接以 JSON 落在能公网访问的地方，运行时靠 KV 缓存扛住读流量，筛选与随机都在内存里算完。
-
-代价也都摆在明面上。数据规模受限于「一次能解析多少 JSON」，因此它适合几千到几万条量级的引语库，而不是海量语料；缓存的更新时间最坏是 `DATA_TTL`（默认 300 秒）加一个热缓存 TTL（60 秒），改完数据不会立刻全网可见——真要立即生效，就调一次 `/api/admin/refresh`。如果这两条边界对你的场景不构成问题，那这套「无数据库、改清单即扩容」的方案，维护成本会低得让人省心。
+如果这两条边界对你的场景不构成问题，那这套「无数据库、改清单即扩容」的方案，维护成本会低得让人省心。
