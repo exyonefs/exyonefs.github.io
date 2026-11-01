@@ -158,9 +158,7 @@ git push deploy main
 
 官方文档中的 Netlify 部署说明已经比较陈旧，提供的 Starter 模板也无法直接跑通——问题主要出在 esbuild 打包 `@waline/vercel` 时会与 ThinkJS 的动态 `require` 产生冲突。因此我自行整理了一套可用的部署配置：将 `@waline/vercel` 标记为 `external_node_modules`，避免 esbuild 将其打包；同时把评论函数超时设为 26s，以覆盖邮件、Akismet 和数据库冷启动；并将 `@waline/vercel` 从 `^1.31.9` 升级到 `^1.41.6`。
 
-> Starter 仓库：<https://github.com/exyone-js/waline-netlify>
-
-*（已归档，需要学习源码请访问 <https://github.com/exyonefs/waline-csv-shard-archive> ）*
+> Starter 仓库：<https://github.com/exyonefs/waline-csv-shards>
 
 和官方模板相比，我这个版本直接用了官方为 Vercel 适配的 `@waline/vercel` 包。它是全量的，没有被裁剪过。但这就引出了第一个两难。
 
@@ -310,8 +308,8 @@ objectId,user_id,comment,insertedAt,...,nick,...
 
 最后需要提醒一句：GitHub CSV 存储方案只是我为了方便迁移 Twikoo 评论数据才用的，生产环境还是应该使用正经数据库。也正因为我不用数据库，这个 Starter 把 mathjax、leancloud、sql 等大量依赖都精简掉了，有同样需求的可以参考。
 
-- Starter：<https://github.com/exyone-js/waline-netlify>
-- 评论数据存储空间：<https://github.com/exyone-js/waline-comments>（私有仓库，外部不可见）
+- Starter：<https://github.com/exyonefs/waline-csv-shards>
+- 评论数据存储空间：<https://github.com/exyonefs/waline-comments>（私有仓库，外部不可见）
 
 过程中参考了不少资料，一并列出：
 

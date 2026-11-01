@@ -21,51 +21,51 @@ comments: true
 
 | 名称 | 网址 | 描述 |
 | --- | --- | --- |
-| Exyone Blog | <https://exyon.ee> | 基于 Jekyll 搭建的个人博客。 |
-| Exyone Blog | <https://blog.exyon.ee> | 基于 WordPress 搭建的生活日志。 |
-| Exyone Git | <https://git.exyon.ee> | 自建的代码托管服务，基于 OneDev 搭建。 |
-| 镜像站 1 | <https://exyonefs.github.io> | 本站镜像，托管于 GitHub Pages。 |
-| 镜像站 2 | <https://exyone.netlify.app> | 本站镜像，托管于 Netlify。 |
+| Exyone Blog | <https://exyon.ee> | 基于 Jekyll 搭建的个人博客 |
+| Exyone Blog | <https://blog.exyon.ee> | 基于 Z-BlogPHP 搭建的生活日志 |
+| Exyone Git | <https://git.exyon.ee> | 自建的代码托管服务，基于 OneDev 搭建 |
+| 镜像站 1 | <https://exyonefs.github.io> | 本站镜像，托管于 GitHub Pages |
+| 镜像站 2 | <https://exyone.netlify.app> | 本站镜像，托管于 Netlify |
 
 ## 特别推荐
 
 | 名称 | 网址 | 描述 |
 | --- | --- | --- |
-| Ited Blog | <https://www.itedev.com> | 读书破万卷，下笔如有神。 |
-| Mayx Blog | <https://mayx.eu.org> | 行到水穷处，坐看云起时。 |
-| 爱吃猫的鱼 | <https://blog.talen.top> | 海阔凭鱼跃，天高任鸟飞。 |
-| 清羽 〄 飞扬 | <https://blog.liushen.fun> | 荷风送香气，竹露滴清响。 |
+| Ited Blog | <https://www.itedev.com> | minc_nice_100 的技术博客,记录编程、运维、网络与安全实践 |
+| Mayx Blog | <https://mayx.eu.org> | Mayx’s Home Page |
+| 爱吃猫的鱼 | <https://blog.talen.top> | 前景可待，未来可期 |
+| 清羽 〄 飞扬 | <https://blog.liushen.fun> | 柳影曳曳，清酒孤灯，扬笔撒墨，心境如霜 |
 
 ## 中文友链
 
 | 名称 | 网址 | 描述 |
 | --- | --- | --- |
-| Manalogues | <https://manalogues.com> | 相望始登高，心随雁飞灭。 |
-| Mofei Blog | <https://www.mofei.life> | 浮云一别后，流水十年间。 |
-| Erzbir Blog | <https://erzbir.com> | 岂不罹凝寒，松柏有本性。 |
-| JiuLiu Blog | <https://myblog.icu> | 随风潜入夜，润物细无声。 |
-| 筱序二十 | <https://www.qixz.cn> | 清水出芙蓉，天然去雕饰。 |
-| 索玛博客 | <https://www.suo.ma> | 绿树村边合，青山郭外斜。 |
-| 寒士杰克 | <https://www.hansjack.com> | 十年磨一剑，霜刃未曾试。 |
-| 記緒漂流 | <https://ttio.cc> | 于记忆之川，泛思绪之舟。 |
-| 涵哲子居 | <https://iluc.cn> | 世事波上舟，沿洄安得住。 |
-| 王志满律师 | <https://2019527.xyz> | 人闲桂花落，夜静春山空。 |
+| Manalogues | <https://manalogues.com> | 科技与人文的十字路口 |
+| Mofei Blog | <https://www.mofei.life> | 在芬兰的程序员超级奶爸，写写博客，聊聊移居生活和带娃日常 |
+| Erzbir Blog | <https://erzbir.com> | #define __DESC ((void *)0) |
+| JiuLiu Blog | <https://myblog.icu> | 个人自行设计开发的博客系统，分享开发经验和生活日常 |
+| 筱序二十 | <https://www.qixz.cn> | 青序成栈，向简而生 |
+| 索玛博客 | <https://www.suo.ma> | 记录生活点滴、域名投资心得、技术折腾与游戏数码体验 |
+| 寒士杰克 | <https://www.hansjack.com> | 喜欢捣鼓，不断进步！ |
+| 記緒漂流 | <https://ttio.cc> | 于记忆之川，泛思绪之舟 |
+| 涵哲子居 | <https://iluc.cn> | 天哲地理，共公卿好 |
+| 王志满律师 | <https://2019527.xyz> | 执业于北京市康达（南昌）律师事务所 |
 
 ## 国际友链
 
-| 名称 | 网址 | 描述 |
-| --- | --- | --- |
-| Albenga | <https://lucio.albenga.es> | 落花人独立，微雨燕双飞。 |
-| Akselmo | <https://akselmo.dev> | 朔风如解意，容易莫摧残。 |
-| Alecsargent | <https://alecsargent.codeberg.page> | 深林人不知，明月来相照。 |
-| Andrienko | <https://eugene-andrienko.com> | 斜月照帘帷，忆君和梦稀。 |
-| Bobbyhiltz | <https://bobbyhiltz.com> | 皑如山上雪，皎若云间月。 |
-| Clayton | <https://claytonerrington.com> | 世界微尘里，吾宁爱与憎。 |
-| Dallineation | <https://dallincrump.com> | 雨落不上天，水覆难再收。 |
-| Harshityadav | <https://harshityadav.in> | 明月何皎皎，照我罗床帏。 |
-| Joelchrono | <https://joelchrono.xyz> | 长歌吟松风，曲尽河星稀。 |
-| Krymtkts | <https://krymtkts.github.io> | 一条藤径绿，万点雪峰晴。 |
-| Nathan | <https://nthp.me> | 湛湛长江去，冥冥细雨来。 |
+| 名称 | 网址 |
+| --- | --- |
+| Albenga | <https://lucio.albenga.es> |
+| Akselmo | <https://akselmo.dev> |
+| Alecsargent | <https://alecsargent.codeberg.page> |
+| Andrienko | <https://eugene-andrienko.com> |
+| Bobbyhiltz | <https://bobbyhiltz.com> |
+| Clayton | <https://claytonerrington.com> |
+| Dallineation | <https://dallincrump.com> |
+| Harshityadav | <https://harshityadav.in> |
+| Joelchrono | <https://joelchrono.xyz> |
+| Krymtkts | <https://krymtkts.github.io> |
+| Nathan | <https://nthp.me> |
 
 <details>
   <summary style="cursor:pointer;">
@@ -108,14 +108,21 @@ comments: true
     <p>请按以下格式提交申请信息（可直接复制下方模板，并将示例替换为贵站内容）：</p>
     <ul>
       <li>站点名称：Example</li>
-      <li>站点地址：https://example.com</li>
+      <li>站点地址：<https://example.com></li>
       <li>站点简介：Example brief introduction</li>
-      <li>代表文章或 RSS：https://example.com/feed.xml</li>
+      <li>代表文章或 RSS：<https://example.com/feed.xml></li>
     </ul>
     <p>我会在方便时查看并回复。通过审核后，会尽快添加贵站友链。本站保留是否交换友链的最终决定权。</p>
 
   </div>
 </details>
 
+> **本站信息**
+>
+> - 站点名称：Exyone's Blog
+> - 站点地址：<https://exyon.ee>
+> - 站点简介：一隅藏天地，流水遇知音
+> - RSS 订阅源：<https://exyon.ee/feed.xml>
+>
 > 如果想要申请友链，请在这个页面下方的评论区留言 (´･ᴗ･`)
-{: .prompt-tip }
+{: .prompt-info }
