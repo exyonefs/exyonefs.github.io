@@ -3,8 +3,8 @@ title: "开源许可证怎么选？从 BSD-2 到 GPL 的决策指南"
 date: 2025-05-16T00:00:00.000Z
 categories: [devlog]
 tags:
-  - 开源项目
-  - 软件开发
+  - open-source-project
+  - software-development
 math: true
 ---
 

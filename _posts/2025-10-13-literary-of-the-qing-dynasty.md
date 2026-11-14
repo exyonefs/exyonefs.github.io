@@ -3,8 +3,8 @@ title: "清代文学的简要介绍，诗词曲小说等古典文学的全面复
 date: 2025-10-13T00:00:00.000Z
 categories: [literature]
 tags:
-  - 历史
-  - 诗词
+  - history
+  - poetry
 ---
 
 ## 引言：被“文字狱”遮蔽的文学盛世

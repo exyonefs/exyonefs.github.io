@@ -2,7 +2,7 @@
 title: "AI 对软件开发的影响，人类开发者最终会被取代吗？"
 date: 2026-10-18
 categories: [devlog]
-tags: [AI, GitHub, 软件开发]
+tags: [AI, GitHub, software-development]
 ---
 
 前段日子，我收到了一封这样的邮件：

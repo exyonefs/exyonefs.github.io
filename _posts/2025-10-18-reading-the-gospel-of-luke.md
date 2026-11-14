@@ -2,7 +2,7 @@
 title: "读《圣经·圣路加福音》：为什么我们要接纳外邦人、穷人与罪人？"
 date: 2025-10-18
 categories: [reading]
-tags: [圣经, 读书]
+tags: [bible, reading]
 ---
 
 四部福音书中，《圣路加福音》常被推荐给初读者，原因不复杂。

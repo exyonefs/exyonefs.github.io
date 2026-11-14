@@ -3,7 +3,7 @@ title: "博客搬家简记：回归 Jekyll 并为 Chirpy 主题接入 Waline 评
 date: 2026-09-12T00:00:00.000Z
 categories: [devlog]
 tags:
-- 博客
+- blog
 - Jekyll
 - Waline
 image: https://jekyllrb.com/img/logo-2x.png

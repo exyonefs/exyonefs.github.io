@@ -2,7 +2,7 @@
 title: "Quotify 引语：一个部署简单的的仿一言 API 方案，运行于 Cloudflare Worker 平台"
 date: 2025-10-13
 categories: [devlog]
-tags: [开源, Cloudflare, TypeScript]
+tags: [open-source, Cloudflare, TypeScript]
 ---
 
 [项目仓库](https://github.com/exyonefs/quotify)

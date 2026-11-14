@@ -3,8 +3,8 @@ title: "坐标系即世界观，为什么 at / on / in 能证明母语级英语�
 date: 2026-07-08T00:00:00.000Z
 categories: [languages]
 tags:
-  - 语言
-  - 哲学
+  - language
+  - philosophy
 ---
 
 > 原文启发：[母语级英语的本质，不是英语](https://xice.cx/posts/English/)

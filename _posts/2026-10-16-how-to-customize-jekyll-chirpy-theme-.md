@@ -2,7 +2,7 @@
 title: "Jekyll Chirpy 主题定制教程，覆盖机制与注入钩子的实现方案"
 date: 2026-10-16
 categories: [devlog]
-tags: [Jekyll, Chirpy, SSG, 前端]
+tags: [Jekyll, Chirpy, SSG, frontend]
 image: https://chirpy-img.netlify.app/commons/devices-mockup.png
 ---
 

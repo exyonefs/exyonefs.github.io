@@ -3,9 +3,9 @@ title: "胜利尖钢笔的历史源流与我的日常使用体验"
 date: 2025-06-21T00:00:00.000Z 
 categories: [reviews]
 tags:
-  - 钢笔
-  - 历史杂谈
-  - 评测 
+  - fountain-pen
+  - history-essays
+  - review
 image: https://pic1.zhimg.com/80/v2-4e6a5c4123145c33446b67d6b20a17aa_720w.webp?source=1def8aca
 ---
 

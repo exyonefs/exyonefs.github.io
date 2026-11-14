@@ -4,8 +4,8 @@ date: 2026-05-03T00:00:00.000Z
 categories: [devlog]
 tags:
   - OneDev
-  - 教程
-  - 软件开发
+  - tutorial
+  - software-development
 image: https://onedev.io/_next/image?url=%2Fimg%2Ffeatures%2Fcode-annotation.png&w=1080&q=75
 ---
 

@@ -2,7 +2,7 @@
 title: "Zest 静态网站生成器，谈谈模板即代码的 F# DSL 设计理念"
 date: 2026-10-06
 categories: [devlog]
-tags: [开源, .NET, F#, SSG]
+tags: [open-source, dotnet, FSharp, SSG]
 render_with_liquid: false
 ---
 

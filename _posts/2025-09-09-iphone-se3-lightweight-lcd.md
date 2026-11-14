@@ -2,7 +2,7 @@
 title: "iPhone SE3 使用体验，复古轻巧却够用的取舍，在今天还够用吗？"
 date: 2025-09-09
 categories: [reviews]
-tags: [数码, iPhone]
+tags: [digital, iPhone]
 ---
 
 ## 引言

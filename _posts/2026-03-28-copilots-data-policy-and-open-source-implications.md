@@ -3,8 +3,8 @@ title: "Copilot 新政策对开源项目的影响与应对措施，代码被用�
 date: 2026-03-28T00:00:00.000Z
 categories: [devlog]
 tags:
-  - 软件开发
-  - 开源项目
+  - software-development
+  - open-source-project
 ---
 
 近日，GitHub 宣布更新 Copilot 隐私政策：从 2026 年 4 月 24 日起，将默认使用 Copilot Free、Pro 和 Pro+ 用户的交互数据（包括输入提示、输出建议、代码片段及相关上下文）来训练和改进 AI 模型。

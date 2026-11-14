@@ -141,7 +141,7 @@ comments:
     reactions_enabled: true # optional, default to the value of `1`
   # Waline options › https://waline.js.org/
   waline:
-    server_url: https://cmt.exyon.ee/api
+    server_url: https://cmt.exyon.ee/.netlify/functions/waline
     cdn: jsdelivr          # jsdelivr | unpkg | custom base url
     emoji:                 # Emoji packages
       - https://cdn.jsdelivr.net/npm/@waline/emojis@1.4.0/weibo

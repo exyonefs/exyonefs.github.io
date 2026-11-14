@@ -2,7 +2,7 @@
 title: "IXUNICS 固态 U 盘评测，4K 随机读写性能是 WinToGo 的门槛"
 date: 2025-08-29
 categories: [reviews]
-tags: [数码, U盘]
+tags: [digital, usb-drive]
 image: https://img.exyon.ee/i/202610/1792213941-2VWdZwjHgm.webp
 ---
 

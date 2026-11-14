@@ -2,7 +2,7 @@
 title: "Waline 评论系统改造简记，Netlify + GitHub 免数据库 CSV 分片存储方案"
 date: 2026-10-02
 categories: [devlog]
-tags: [开源, Waline, Netlify, GitHub]
+tags: [open-source, Waline, Netlify, GitHub]
 ---
 
 9 月那篇[博客搬家记录](/posts/blog-migration-and-waline-comments/)的结尾留了个尾巴：文中的 Waline 改造后来又被我重新写了一遍，篇幅所限没有展开，只留了一句「欢迎访问仓库」。这篇文章把这件事补上：我用一套自定义存储适配器替换了 `@waline/vercel` 的「单文件 CSV」实现，把评论数据以 **CSV 分片文件**的形式存放在 GitHub 仓库里。改造只换底层存储，上层业务逻辑零改动。
@@ -39,8 +39,8 @@ tags: [开源, Waline, Netlify, GitHub]
 1. 新建一个【空的 GitHub 仓库】当数据仓库（建议 Private）
 2. 申请一个 Fine-grained token，只给这个仓库 Contents: Read and write
 3. Fork 本仓库 → Netlify "Import from Git" → 填 3 个环境变量 → 部署
-4. 打开 https://<站点>/.netlify/functions/comment/ui/register 注册管理员
-5. 前端把 serverURL 指到 https://<站点>/.netlify/functions/comment
+4. 打开 https://<站点>/.netlify/functions/waline/ui/register 注册管理员
+5. 前端把 serverURL 指到 https://<站点>/.netlify/functions/waline
 ```
 
 > ⚠️ **不要把数据仓库设成站点仓库自己。** 每次写评论都会向数据仓库提交一次 commit。两者若是同一个仓库，Netlify 会把每次提交都当成部署触发，形成“写入 → 部署 → 写入”的循环。
@@ -114,7 +114,7 @@ GitHub → **Settings → Developer settings → Personal access tokens → Fine
 部署成功后访问（注意是 Netlify 的函数路径，没有 `/api` 前缀）：
 
 ```text
-https://<你的站点>/.netlify/functions/comment/ui/register
+https://<你的站点>/.netlify/functions/waline/ui/register
 ```
 
 第一个注册的账号自动成为管理员，后台入口是同目录下的 `/ui/login`。如果注册页返回 500，先看 Netlify 的 Function 日志，多半是 `GITHUB_TOKEN` / `GITHUB_REPO` 配错了。
@@ -129,7 +129,7 @@ https://<你的站点>/.netlify/functions/comment/ui/register
 
   init({
     el: '#waline',
-    serverURL: 'https://<你的站点>/.netlify/functions/comment',
+    serverURL: 'https://<你的站点>/.netlify/functions/waline',
   });
 </script>
 ```
@@ -141,7 +141,7 @@ https://<你的站点>/.netlify/functions/comment/ui/register
 ```toml
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/comment/:splat"
+  to = "/.netlify/functions/waline/:splat"
   status = 200
 ```
 
@@ -149,7 +149,7 @@ https://<你的站点>/.netlify/functions/comment/ui/register
 
 ### 验证清单
 
-1. 打开 `https://<站点>/.netlify/functions/comment`（Waline 自带示例页，可直接发一条评论）。
+1. 打开 `https://<站点>/.netlify/functions/waline`（Waline 自带示例页，可直接发一条评论）。
 2. 发完后去数据仓库看，应出现 `data/comments/<xx>/<xxxx>.csv` 与 `data/comments/_manifest.csv`。
 3. 调一次 `GET /csv-depot/stats`（需管理员 token，见后文「备份与运维」），确认 `shards.Comment ≥ 1`、`pending = 0`。
 4. 用 `/ui/login` 登录后台，确认能看到刚才那条评论。
@@ -235,7 +235,7 @@ manifest 是**读路径的核心**：刷新时只拉取三张表的 manifest（3
 
 ## 备份与运维
 
-所有接口都需要管理员身份（`Authorization: Bearer <登录 token>`）。完整路径是 `https://<站点>/.netlify/functions/comment/csv-depot/<action>`（若你配了 `/api` 重定向，就是 `https://<站点>/api/csv-depot/<action>`）。
+所有接口都需要管理员身份（`Authorization: Bearer <登录 token>`）。完整路径是 `https://<站点>/.netlify/functions/waline/csv-depot/<action>`（若你配了 `/api` 重定向，就是 `https://<站点>/api/csv-depot/<action>`）。
 
 | 方法 | 路径 | 作用 |
 |---|---|---|
@@ -250,7 +250,7 @@ manifest 是**读路径的核心**：刷新时只拉取三张表的 manifest（3
 | `POST` | `/csv-depot/reset` | **不可逆**：丢弃全部历史提交，只保留当前数据（需显式 `confirm=1`） |
 
 ```bash
-BASE=https://<站点>/.netlify/functions/comment/csv-depot
+BASE=https://<站点>/.netlify/functions/waline/csv-depot
 TOKEN=<后台登录后浏览器里拿到的 token>
 
 curl -X POST "$BASE/snapshot" -H "Authorization: Bearer $TOKEN"
@@ -397,7 +397,7 @@ npm run benchmark # 生成 overlay/benchmark/REPORT.md
 
 ```bash
 # 模拟生产运行时，确认函数入口能被加载（这是把 1.43.4 跑挂的那个坑）
-node --no-experimental-require-module -e "require('./netlify/functions/comment.js')"
+node --no-experimental-require-module -e "require('./netlify/functions/waline.js')"
 ```
 
 想拿真实仓库跑，可以另建一个测试仓库，把 `GITHUB_TOKEN` / `GITHUB_REPO` 写进 `.env` 后 `netlify dev`（需要 Netlify CLI）。**不要直接拿线上数据仓库做实验**，先 `POST /csv-depot/snapshot`。
@@ -406,10 +406,10 @@ node --no-experimental-require-module -e "require('./netlify/functions/comment.j
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| 冷启动报 `ERR_REQUIRE_ESM`（函数 502，日志有 `Init Error`） | 某个依赖只有 ESM 构建，却被 waline 在模块加载期同步 `require`；Lambda 的 Node 24 没开 `require(esm)` | 仓库已用 `overlay/plugin-emoji-cjs` 垫片解决 1.43.4 的这类问题；升级 waline 后再遇到，用 `node --no-experimental-require-module -e "require('./netlify/functions/comment.js')"` 定位到具体包，再按同样方式加垫片 |
+| 冷启动报 `ERR_REQUIRE_ESM`（函数 502，日志有 `Init Error`） | 某个依赖只有 ESM 构建，却被 waline 在模块加载期同步 `require`；Lambda 的 Node 24 没开 `require(esm)` | 仓库已用 `overlay/plugin-emoji-cjs` 垫片解决 1.43.4 的这类问题；升级 waline 后再遇到，用 `node --no-experimental-require-module -e "require('./netlify/functions/waline.js')"` 定位到具体包，再按同样方式加垫片 |
 | 评论提交返回 500 `评论存储提交失败` | 提交 GitHub 失败且重试耗尽；内存变更已回滚，**数据没有丢一半** | 检查 `GITHUB_TOKEN` 权限/有效期与 GitHub 状态 |
 | 日志出现 `无法访问 GitHub 仓库` | `GITHUB_REPO` 不是 `owner/repo`，或 token 未授权该仓库 | 修正环境变量后重新部署 |
-| `/ui/register` 打不开或 404 | 路径不对（Netlify 下没有 `/api` 前缀）或函数没起来 | 用 `/.netlify/functions/comment/ui/register`；看 Function 日志 |
+| `/ui/register` 打不开或 404 | 路径不对（Netlify 下没有 `/api` 前缀）或函数没起来 | 用 `/.netlify/functions/waline/ui/register`；看 Function 日志 |
 | 页面读到的评论变少了 | 内存缓存尚未过期（默认 60s），其他实例刚写入 | 等一个 `CSV_CACHE_TTL` 周期；或调小该值 |
 | 有人直接在 GitHub 上改了 CSV，前台没变 | 读路径只信任 manifest 记录的 SHA | 调 `POST /csv-depot/rebuild` 核对并同步 |
 | 页面换过地址后评论变少了 | 旧地址哈希出的分片里留着改过 `url` 的错位行 | 通常已被自动搬迁；没生效就调 `POST /csv-depot/repair` |
@@ -448,7 +448,7 @@ node --no-experimental-require-module -e "require('./netlify/functions/comment.j
 仓库刻意保持“上游 + 补丁”的形状——所有改造都收在 `overlay/` 一层目录里，根目录不新增任何平级目录，因此和上游 starter 的 diff 一眼能看清：
 
 ```text
-netlify/functions/comment.js    # 唯一的上游接线点：Waline({ model, plugins })
+netlify/functions/waline.js    # 唯一的上游接线点：Waline({ model, plugins })
 overlay/                        # ← 我们做的全部改造都在这一层里
 ├── csv-depot/                  #   多 CSV 分片存储（适配器 + GitHub 客户端 + 快照 + 入口）
 ├── csv-depot-tests/            #   内存版 GitHub API 与用例
@@ -485,7 +485,7 @@ npm install             # 重建 node_modules 与 lockfile
 
 | 文件 | 职责 |
 |---|---|
-| `netlify/functions/comment.js` | Netlify Function 入口（注入 `model` 与插件，是唯一改动的上游文件） |
+| `netlify/functions/waline.js` | Netlify Function 入口（注入 `model` 与插件，是唯一改动的上游文件） |
 | `overlay/csv-depot/github-client.js` | GitHub Contents API / Git Data API 封装、SHA 校验、批量提交、重试 |
 | `overlay/csv-depot/shard-manager.js` | 分片命名与路由、manifest、CSV 编解码、裂变与合并规划 |
 | `overlay/csv-depot/csv-shard-cache.js` | 分片按需加载、内存索引、条件查询（where/order/limit）、变更与回滚、错位分片自愈 |
@@ -534,7 +534,7 @@ git merge upstream/master --no-ff
 
 `package-lock.json` 几乎必然冲突：**保留本地版本**（`git checkout HEAD -- package-lock.json`）。仓库的 lockfile 是 v3 且已按 `overrides` 裁剪过，混进上游的 v2 结构会让 Netlify 依赖体积失控。
 
-`@waline/vercel` 目前在 1.43.4。要跟进上游新版本时注意：升级会牵动 `netlify/functions/comment.js` 的 `model` / `plugins` 注入契约与数据表列，升完必须跑完 `npm test`（含真实 Waline 运行时端到端用例）再上线。
+`@waline/vercel` 目前在 1.43.4。要跟进上游新版本时注意：升级会牵动 `netlify/functions/waline.js` 的 `model` / `plugins` 注入契约与数据表列，升完必须跑完 `npm test`（含真实 Waline 运行时端到端用例）再上线。
 
 > **注意 `overrides` 不能改名**：`package.json` 里的 `overrides` 是 **npm 自己的字段**（[官方文档](https://docs.npmjs.com/cli/v11/configuring-npm/package-json#overrides)），不是本仓库的命名约定。改成别的键名会被 npm 当成未知字段静默忽略，于是 `@mathjax/*`、`leancloud-*` 会被真实安装，函数包体积直接冲破 Netlify 的限额。仓库里叫 `overlay/` 的是**目录**（放我们自己的改造），两者不是一回事。
 

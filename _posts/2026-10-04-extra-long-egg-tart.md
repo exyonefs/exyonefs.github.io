@@ -2,7 +2,7 @@
 title: "分享一下最近很火的超长蛋挞，顺便记录一下兰空图床搭建过程中遇到的 PHP 报错"
 date: 2026-10-04
 categories: [lifelog]
-tags: [生活, 美食]
+tags: [life, food]
 image: https://img.exyon.ee/i/202610/1791119186-JM6XtJJLnS.webp
 ---
 

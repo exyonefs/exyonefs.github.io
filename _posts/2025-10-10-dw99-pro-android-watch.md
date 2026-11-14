@@ -2,7 +2,7 @@
 title: "卫派 DW100 长期体验：几百块的安卓手表与华强北手表市场避坑指南"
 date: 2025-10-10
 categories: [reviews]
-tags: [数码, 手表]
+tags: [digital, watch]
 image: https://img.exyon.ee/i/202610/1792213942-v8FyfC5MAk.webp
 ---
 
