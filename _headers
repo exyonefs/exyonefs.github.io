@@ -1,0 +1,11 @@
+# Cloudflare Pages / Netlify header rules.
+# Jekyll copies this file into _site verbatim (see `include` in _config.yml),
+# so it ends up at the root of the deployed output where both platforms look
+# for it. Netlify additionally applies the mirror rule in netlify.toml.
+
+# The compiled enhancement script is fetched by pages on other origins
+# (embeds / mirrors of this site), so it must be readable cross-origin.
+/assets/js/chirpy-enhance.min.js
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+  Cross-Origin-Resource-Policy: cross-origin

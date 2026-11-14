@@ -1,0 +1,282 @@
+---
+layout: page
+title: "404 · 页面不存在"
+permalink: /404.html
+---
+
+<style>
+  /* Chirpy 的 page 布局会自动输出页面标题，错误页只保留自己的 404 */
+  article.px-1 > h1.dynamic-title { display: none; }
+  article.px-1 > .content { margin-top: 0; }
+
+  .ErrorPage {
+    --ep-text: #646464;
+    --ep-blue: #0084ff;
+    --ep-blue-hover: #0077e6;
+    --ep-ink: #8590a6;
+
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+      "PingFang SC", "Microsoft YaHei", "Source Han Sans SC",
+      "Noto Sans CJK SC", "WenQuanYi Micro Hei", sans-serif;
+  }
+
+  /* 同时跟随 Chirpy 的 data-bs-theme 与知乎原版的 data-theme */
+  html[data-theme="dark"] .ErrorPage,
+  html[data-bs-theme="dark"] .ErrorPage {
+    --ep-text: #999;
+    --ep-blue: #3a76d0;
+    --ep-blue-hover: #2e69c2;
+    --ep-ink: #8a8a8a;
+  }
+
+  .ErrorPage *,
+  .ErrorPage *::before,
+  .ErrorPage *::after { box-sizing: border-box; }
+
+  .ErrorPage a {
+    border-bottom: 0 !important;
+    text-decoration: none;
+  }
+
+  .ErrorPage .Button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: inline-block;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 0;
+    text-align: center;
+  }
+
+  .ErrorPage .Button:focus {
+    outline: none;
+    transition: box-shadow 0.3s;
+    box-shadow: 0 0 0 2px var(--main-bg, #fff),
+      0 0 0 4px rgb(0 132 255 / 30%);
+  }
+
+  html[data-theme="dark"] .ErrorPage .Button:focus,
+  html[data-bs-theme="dark"] .ErrorPage .Button:focus {
+    box-shadow: 0 0 0 2px var(--main-bg, #1a1a1a),
+      0 0 0 4px rgb(58 118 208 / 60%);
+  }
+
+  .ErrorPage .Button--primary {
+    border: 1px solid;
+    border-radius: 3px;
+    line-height: 32px;
+    padding: 0 16px;
+  }
+
+  .ErrorPage a.Button--primary.Button--blue,
+  .ErrorPage a.Button--primary.Button--blue:hover {
+    background-color: var(--ep-blue);
+    border-color: var(--ep-blue);
+    color: #fff !important;
+  }
+
+  .ErrorPage a.Button--primary.Button--blue:hover {
+    background-color: var(--ep-blue-hover);
+    border-color: var(--ep-blue-hover);
+  }
+
+  .ErrorPage .Button--plain.Button--blue { color: var(--ep-blue); }
+  .ErrorPage .Button--plain.Button--blue:hover { color: var(--ep-blue-hover); }
+
+  .ErrorPage-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 180px;
+  }
+
+  @media (max-width: 690px) {
+    .ErrorPage-container {
+      align-items: center;
+      flex-direction: column-reverse;
+      margin-top: 60px;
+    }
+  }
+
+  .ErrorPage .ErrorPage-title,
+  .ErrorPage .ErrorPage-subtitle {
+    color: var(--ep-text);
+    line-height: 1.4;
+  }
+
+  .ErrorPage h1.ErrorPage-title {
+    font-size: 40px;
+    font-synthesis: style;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .ErrorPage p.ErrorPage-subtitle {
+    font-size: 18px;
+    margin: 10px 0 0;
+  }
+
+  .ErrorPage-text {
+    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 100%;
+    min-width: 384px;
+  }
+
+  @media (max-width: 690px) {
+    .ErrorPage h1.ErrorPage-title { font-size: 30px; }
+    .ErrorPage-text {
+      align-items: center;
+      min-width: auto;
+      text-align: center;
+    }
+  }
+
+  .ErrorPage-primaryButton { margin-top: 20px; }
+
+  .ErrorPage-otherButtonContainer {
+    align-items: center;
+    color: var(--ep-blue);
+    display: flex;
+    font-size: 14px;
+    font-synthesis: style;
+    font-weight: 600;
+    margin-top: 20px;
+  }
+
+  .ErrorPage-otherButton {
+    align-items: center;
+    display: flex;
+    font-synthesis: style;
+    font-weight: 600;
+    margin-left: 0.5em;
+  }
+
+  .ErrorPage-errorImageContainer {
+    align-items: center;
+    color: var(--ep-ink);
+    display: flex;
+    flex: 0 0 250px;
+    height: 250px;
+    justify-content: center;
+    margin-left: 20px;
+    width: 250px;
+  }
+
+  @media (max-width: 690px) {
+    .ErrorPage-errorImageContainer { margin-left: 0; }
+  }
+
+  .ErrorPage-errorImage {
+    display: block;
+    height: 100%;
+    width: 100%;
+  }
+
+  .ErrorPage .ep-accent {
+    stroke: var(--ep-blue);
+    stroke-width: 2.5;
+  }
+</style>
+
+<div class="ErrorPage">
+  <div class="ErrorPage-container">
+    <div class="ErrorPage-text">
+      <h1 class="ErrorPage-title">404</h1>
+      <p class="ErrorPage-subtitle">你似乎来到了没有知识存在的荒原</p>
+      <a
+        class="Button Button--primary Button--blue ErrorPage-primaryButton"
+        href="{{ '/' | relative_url }}"
+      >
+        去往首页
+      </a>
+      <div class="ErrorPage-otherButtonContainer">
+        或者
+        <button
+          type="button"
+          class="Button Button--plain Button--blue ErrorPage-otherButton ErrorPage-goBackButton"
+        >
+          返回上页
+          <svg
+            class="Zi Zi--ArrowRight"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+            width="24px"
+            height="24px"
+            aria-hidden="true"
+          >
+            <path
+              d="M9.218 16.78a.737.737 0 0 0 1.052 0l4.512-4.249a.758.758 0 0 0 0-1.063L10.27 7.22a.737.737 0 0 0-1.052 0 .759.759 0 0 0-.001 1.063L13 12l-3.782 3.716a.758.758 0 0 0 0 1.063z"
+              fill-rule="evenodd"
+            ></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="ErrorPage-errorImageContainer">
+      <svg
+        class="ErrorPage-errorImage"
+        viewBox="0 0 250 250"
+        role="img"
+        aria-label="荒原上仰望星空的小熊"
+      >
+        <g
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <g opacity=".45">
+            <path
+              d="M185.1 31.02
+                 A27 27 0 1 0 210.56 69.22
+                 A24 24 0 1 1 185.1 31.02
+                 Z"
+            />
+            <path d="M48 44v12m-6-6h12" />
+            <path d="M106 28v8m-4-4h8" />
+            <path d="M220 116v8m-4-4h8" />
+            <circle cx="32" cy="100" r="2" fill="currentColor" stroke="none" />
+            <circle cx="152" cy="30" r="1.8" fill="currentColor" stroke="none" />
+            <circle cx="60" cy="188" r="2" fill="currentColor" stroke="none" />
+            <circle cx="186" cy="184" r="1.6" fill="currentColor" stroke="none" />
+            <path d="M18 126c10-6 20-6 30 0s20 6 30 0" />
+            <path d="M170 140c8-5 16-5 24 0s16 5 24 0" />
+            <path d="M8 196h78" />
+            <path d="M138 196h104" />
+          </g>
+          <path d="M91.25 118.69A9.5 9.5 0 0 1 104.69 105.25" />
+          <path d="M119.32 105.25A9.5 9.5 0 0 1 132.75 118.69" />
+          <circle cx="112" cy="126" r="22" />
+          <circle cx="104" cy="121" r="2.4" fill="currentColor" stroke="none" />
+          <circle cx="120" cy="121" r="2.4" fill="currentColor" stroke="none" />
+          <ellipse cx="112" cy="131" rx="3.4" ry="2.6" fill="currentColor" stroke="none" />
+          <path d="M112 134v3" />
+          <path d="M112 137c-1.8 2.4-4.4 2.4-6 0.4" />
+          <path d="M112 137c1.8 2.4 4.4 2.4 6 0.4" />
+          <path d="M86 196C86 168 96 148 112 148C128 148 138 168 138 196" />
+        </g>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var back = document.querySelector('.ErrorPage-goBackButton');
+    if (!back) return;
+
+    back.addEventListener('click', function () {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '{{ '/' | relative_url }}';
+      }
+    });
+  })();
+</script>

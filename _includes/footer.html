@@ -1,0 +1,496 @@
+<!-- The Footer -->
+<footer aria-label="Site Info" class="site-footer">
+  <div class="d-flex flex-column justify-content-center text-muted flex-lg-row justify-content-lg-between align-items-lg-center pb-lg-3">
+    <p class="mb-0 copyright">
+      © <span id="year"></span>
+      · <em class="fst-normal">{{ site.social.name }}</em>
+      <i class="fas fa-heartbeat heartbeat-icon"></i>
+      {{ site.posts | size }} posts · {{ site.tags | size }} tags
+    </p>
+
+    <p class="mb-0">
+      Built with <a href="https://jekyllrb.com" target="_blank" rel="noopener">Jekyll</a> &amp;
+      <a href="https://github.com/cotes2020/jekyll-theme-chirpy" target="_blank" rel="noopener">Chirpy</a> ·
+      Hosted on <a href="https://pages.github.com" target="_blank" rel="noopener">GitHub Pages</a> ·
+      <a href="https://www.cloudflare.com" target="_blank" rel="noopener">Cloudflare CDN</a>
+    </p>
+  </div>
+
+  <div id="jsi-flying-fish-container" class="fish-stage" aria-hidden="true"></div>
+</footer>
+
+<style>
+  .site-footer {
+    position: relative;
+    height: auto;
+    padding-bottom: 0;
+    margin-top: 2rem;
+    border-top: 1px solid rgba(128, 128, 128, 0.18);
+    overflow: visible;
+  }
+
+  .site-footer > div:first-child {
+    position: relative;
+    z-index: 1;
+  }
+
+  .fish-stage {
+    --fish-water: hsl(0, 0%, 95%);
+    --fish-saturation: 75;
+    --fish-lightness: 62;
+
+    width: var(--fish-extend-width, 100%);
+    margin-left: var(--fish-extend-left, 0px);
+    margin-top: -3.25rem;
+    height: 160px;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .fish-stage canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* 深色模式下水面贴合主题背景，鱼身略提亮、降低饱和度 */
+  html[data-bs-theme="dark"] .fish-stage {
+    --fish-water: #28282b;
+    --fish-saturation: 68;
+    --fish-lightness: 66;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html:not([data-bs-theme]) .fish-stage {
+      --fish-water: #28282b;
+      --fish-saturation: 68;
+      --fish-lightness: 66;
+    }
+  }
+
+  .heartbeat-icon {
+    color: #ff6b6b;
+    animation: heartbeat 1.5s ease-in-out infinite;
+    display: inline-block;
+    margin: 0 0.3em;
+  }
+
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    14%      { transform: scale(1.15); }
+    28%      { transform: scale(1); }
+    42%      { transform: scale(1.15); }
+    70%      { transform: scale(1); }
+  }
+
+  .heartbeat-icon:hover {
+    color: #ff4757;
+    animation: heartbeat-hover 1s ease-in-out infinite;
+    cursor: pointer;
+  }
+
+  @keyframes heartbeat-hover {
+    0%, 100% { transform: scale(1); }
+    14%      { transform: scale(1.2); }
+    28%      { transform: scale(1); }
+    42%      { transform: scale(1.2); }
+    70%      { transform: scale(1); }
+  }
+
+  [data-mode="dark"] .heartbeat-icon {
+    color: #ff6b6b;
+  }
+  [data-mode="dark"] .heartbeat-icon:hover {
+    color: #ff4757;
+  }
+</style>
+
+<script>
+(() => {
+  'use strict';
+
+  const POINT_INTERVAL = 5;
+  const FISH_COUNT = 4;
+  const MAX_INTERVAL_COUNT = 85;
+  const INIT_HEIGHT_RATE = 0.5;
+  const THRESHOLD = 50;
+  const WATCH_INTERVAL = 100;
+  const SPRING_CONSTANT = 0.03;
+  const SPRING_FRICTION = 0.9;
+  const WAVE_SPREAD = 0.26;
+  const ACCELARATION_RATE = 0.008;
+  const GRAVITY = 0.4;
+
+  class SurfacePoint {
+    constructor(renderer, x) {
+      this.renderer = renderer;
+      this.x = x;
+      this.initHeight = renderer.height * INIT_HEIGHT_RATE;
+      this.height = this.initHeight;
+      this.fy = 0;
+      this.force = { previous: 0, next: 0 };
+    }
+
+    setPreviousPoint(previous) {
+      this.previous = previous;
+    }
+
+    setNextPoint(next) {
+      this.next = next;
+    }
+
+    interfere(y, velocity) {
+      const { height } = this.renderer;
+      this.fy = height * ACCELARATION_RATE *
+        ((height - this.height - y) >= 0 ? -1 : 1) * Math.abs(velocity);
+    }
+
+    updateSelf() {
+      this.fy += SPRING_CONSTANT * (this.initHeight - this.height);
+      this.fy *= SPRING_FRICTION;
+      this.height += this.fy;
+    }
+
+    updateNeighbors() {
+      if (this.previous) {
+        this.force.previous = WAVE_SPREAD * (this.height - this.previous.height);
+      }
+      if (this.next) {
+        this.force.next = WAVE_SPREAD * (this.height - this.next.height);
+      }
+    }
+
+    render(context) {
+      if (this.previous) {
+        this.previous.height += this.force.previous;
+        this.previous.fy += this.force.previous;
+      }
+      if (this.next) {
+        this.next.height += this.force.next;
+        this.next.fy += this.force.next;
+      }
+      context.lineTo(this.x, this.renderer.height - this.height);
+    }
+  }
+
+  class Fish {
+    constructor(renderer) {
+      this.renderer = renderer;
+      this.init();
+    }
+
+    init() {
+      const { width, height } = this.renderer;
+      this.direction = Math.random() < 0.5;
+      this.x = this.direction ? width + THRESHOLD : -THRESHOLD;
+      this.previousY = this.y;
+      this.vx = this.getRandomValue(3, 7.5) * (this.direction ? -1 : 1);
+      this.y = this.getRandomValue(height * 2 / 10, height * 6 / 10);
+      this.vy = this.getRandomValue(-4, -1.8);
+      this.ay = this.getRandomValue(-0.15, -0.04);
+      this.isOut = false;
+      this.theta = 0;
+      this.phi = 0;
+      this.hue = Math.random() * 360;
+    }
+
+    getRandomValue(min, max) {
+      return min + (max - min) * Math.random();
+    }
+
+    controlStatus() {
+      const { width, height } = this.renderer;
+      this.previousY = this.y;
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vy += this.ay;
+
+      if (this.y < height * INIT_HEIGHT_RATE) {
+        this.vy += GRAVITY;
+        this.isOut = true;
+      } else {
+        if (this.isOut) {
+          this.ay = this.getRandomValue(-0.15, -0.04);
+        }
+        this.isOut = false;
+      }
+
+      if (!this.isOut) {
+        this.theta += Math.PI / 20;
+        this.theta %= Math.PI * 2;
+        this.phi += Math.PI / 30;
+        this.phi %= Math.PI * 2;
+      }
+
+      this.renderer.generateEpicenter(
+        this.x + (this.direction ? -1 : 1) * THRESHOLD,
+        this.y,
+        this.y - this.previousY
+      );
+
+      if ((this.vx > 0 && this.x > width + THRESHOLD) ||
+          (this.vx < 0 && this.x < -THRESHOLD)) {
+        this.init();
+      }
+    }
+
+    render(context) {
+      const { saturation, lightness } = this.renderer.palette;
+
+      context.save();
+      context.fillStyle = `hsl(${this.hue}, ${saturation}%, ${lightness}%)`;
+      context.translate(this.x, this.y);
+      context.rotate(Math.PI + Math.atan2(this.vy, this.vx));
+      context.scale(1, this.direction ? 1 : -1);
+      context.beginPath();
+      context.moveTo(-30, 0);
+      context.bezierCurveTo(-20, 15, 15, 10, 40, 0);
+      context.bezierCurveTo(15, -10, -20, -15, -30, 0);
+      context.fill();
+
+      context.save();
+      context.translate(40, 0);
+      context.scale(0.9 + 0.2 * Math.sin(this.theta), 1);
+      context.beginPath();
+      context.moveTo(0, 0);
+      context.quadraticCurveTo(5, 10, 20, 8);
+      context.quadraticCurveTo(12, 5, 10, 0);
+      context.quadraticCurveTo(12, -5, 20, -8);
+      context.quadraticCurveTo(5, -10, 0, 0);
+      context.fill();
+      context.restore();
+
+      context.save();
+      context.translate(-3, 0);
+      context.rotate(Math.PI / 3 + Math.PI / 10 * Math.sin(this.phi));
+      context.beginPath();
+      context.moveTo(-5, 0);
+      context.bezierCurveTo(-10, -10, -10, -30, 0, -40);
+      context.bezierCurveTo(12, -25, 8, -10, 0, 0);
+      context.closePath();
+      context.fill();
+      context.restore();
+      context.restore();
+      this.controlStatus();
+    }
+  }
+
+  class Renderer {
+    constructor() {
+      this.$window = window;
+      this.$container = document.getElementById('jsi-flying-fish-container');
+      this.$canvas = document.createElement('canvas');
+      this.$container.appendChild(this.$canvas);
+      this.context = this.$canvas.getContext('2d');
+      this.points = [];
+      this.fishes = [];
+      this.watchIds = [];
+
+      this.watchWindowSize = this.watchWindowSize.bind(this);
+      this.jdugeToStopResize = this.jdugeToStopResize.bind(this);
+      this.startEpicenter = this.startEpicenter.bind(this);
+      this.moveEpicenter = this.moveEpicenter.bind(this);
+      this.render = this.render.bind(this);
+    }
+
+    init() {
+      this.setup();
+      this.bindEvent();
+      this.render();
+    }
+
+    createSurfacePoints() {
+      const count = Math.round(this.width / POINT_INTERVAL);
+      this.pointInterval = this.width / (count - 1);
+      this.points.push(new SurfacePoint(this, 0));
+
+      for (let i = 1; i < count; i++) {
+        const point = new SurfacePoint(this, i * this.pointInterval);
+        const previous = this.points[i - 1];
+
+        point.setPreviousPoint(previous);
+        previous.setNextPoint(point);
+        this.points.push(point);
+      }
+    }
+
+    expandStage() {
+      const wrapper = document.getElementById('main-wrapper');
+      const footer = this.$container.parentNode;
+      if (!wrapper || !footer) {
+        return;
+      }
+      const bounds = wrapper.getBoundingClientRect();
+      const offset = footer.getBoundingClientRect();
+      footer.style.setProperty('--fish-extend-left', `${bounds.left - offset.left}px`);
+      footer.style.setProperty('--fish-extend-width', `${bounds.width}px`);
+    }
+
+    readPalette() {
+      const styles = this.$window.getComputedStyle(this.$container);
+      const number = (name, fallback) => {
+        const value = parseFloat(styles.getPropertyValue(name));
+        return Number.isFinite(value) ? value : fallback;
+      };
+
+      this.palette = {
+        water: styles.getPropertyValue('--fish-water').trim() || 'hsl(0, 0%, 95%)',
+        saturation: number('--fish-saturation', 75),
+        lightness: number('--fish-lightness', 62)
+      };
+    }
+
+    setup() {
+      this.readPalette();
+      this.expandStage();
+      this.points.length = 0;
+      this.fishes.length = 0;
+      this.watchIds.length = 0;
+      this.intervalCount = MAX_INTERVAL_COUNT;
+      this.width = this.$container.clientWidth;
+      this.height = this.$container.clientHeight;
+      this.fishCount = FISH_COUNT * this.width / 500 * this.height / 500;
+      this.$canvas.width = this.width;
+      this.$canvas.height = this.height;
+
+      this.fishes.push(new Fish(this));
+      this.createSurfacePoints();
+    }
+
+    watchWindowSize() {
+      this.clearTimer();
+      this.tmpWidth = this.$window.innerWidth;
+      this.tmpHeight = this.$window.innerHeight;
+      this.watchIds.push(setTimeout(this.jdugeToStopResize, WATCH_INTERVAL));
+    }
+
+    clearTimer() {
+      while (this.watchIds.length > 0) {
+        clearTimeout(this.watchIds.pop());
+      }
+    }
+
+    jdugeToStopResize() {
+      const width = this.$window.innerWidth;
+      const height = this.$window.innerHeight;
+      const stopped = width === this.tmpWidth && height === this.tmpHeight;
+
+      this.tmpWidth = width;
+      this.tmpHeight = height;
+
+      if (stopped) {
+        this.setup();
+      }
+    }
+
+    bindEvent() {
+      this.$window.addEventListener('resize', this.watchWindowSize);
+      this.$container.addEventListener('mouseenter', this.startEpicenter);
+      this.$container.addEventListener('mousemove', this.moveEpicenter);
+
+      const syncPalette = () => this.readPalette();
+      new MutationObserver(syncPalette).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-bs-theme', 'data-theme']
+      });
+
+      const darkQuery = this.$window.matchMedia('(prefers-color-scheme: dark)');
+      if (darkQuery.addEventListener) {
+        darkQuery.addEventListener('change', syncPalette);
+      } else if (darkQuery.addListener) {
+        darkQuery.addListener(syncPalette);
+      }
+    }
+
+    getAxis(event) {
+      const { left, top } = this.$container.getBoundingClientRect();
+
+      return {
+        x: event.clientX - left,
+        y: event.clientY - top
+      };
+    }
+
+    startEpicenter(event) {
+      this.axis = this.getAxis(event);
+    }
+
+    moveEpicenter(event) {
+      const axis = this.getAxis(event);
+
+      if (!this.axis) {
+        this.axis = axis;
+      }
+      this.generateEpicenter(axis.x, axis.y, axis.y - this.axis.y);
+      this.axis = axis;
+    }
+
+    generateEpicenter(x, y, velocity) {
+      if (y < this.height / 2 - THRESHOLD || y > this.height / 2 + THRESHOLD) {
+        return;
+      }
+      const index = Math.round(x / this.pointInterval);
+
+      if (index < 0 || index >= this.points.length) {
+        return;
+      }
+      this.points[index].interfere(y, velocity);
+    }
+
+    controlStatus() {
+      for (const point of this.points) {
+        point.updateSelf();
+      }
+      for (const point of this.points) {
+        point.updateNeighbors();
+      }
+      if (this.fishes.length < this.fishCount) {
+        if (--this.intervalCount === 0) {
+          this.intervalCount = MAX_INTERVAL_COUNT;
+          this.fishes.push(new Fish(this));
+        }
+      }
+    }
+
+    render() {
+      requestAnimationFrame(this.render);
+      this.controlStatus();
+      this.context.clearRect(0, 0, this.width, this.height);
+      this.context.save();
+      this.context.globalCompositeOperation = 'xor';
+      this.context.fillStyle = this.palette.water;
+      this.context.beginPath();
+      this.context.moveTo(0, this.height);
+
+      for (const point of this.points) {
+        point.render(this.context);
+      }
+      this.context.lineTo(this.width, this.height);
+      this.context.closePath();
+      this.context.fill();
+      this.context.restore();
+
+      for (const fish of this.fishes) {
+        fish.render(this.context);
+      }
+    }
+  }
+
+  const init = () => {
+    if (document.getElementById('jsi-flying-fish-container')) {
+      new Renderer().init();
+    }
+
+    const yearEl = document.getElementById('year');
+    if (yearEl) {
+      yearEl.textContent = new Date().getFullYear();
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>

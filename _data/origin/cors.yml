@@ -1,0 +1,66 @@
+# Resource Hints
+# Google Fonts is mirrored via loli.net (fonts.googleapis.com -> fonts.loli.net,
+# fonts.gstatic.com -> gstatic.loli.net) because the Google CDN is unreachable.
+resource_hints:
+  - url: https://fonts.loli.net
+    links:
+      - rel: preconnect
+      - rel: dns-prefetch
+  - url: https://gstatic.loli.net
+    links:
+      - rel: preconnect
+        opts: [crossorigin]
+      - rel: dns-prefetch
+  - url: https://cdn.jsdelivr.net
+    links:
+      - rel: preconnect
+      - rel: dns-prefetch
+
+# Web Fonts
+# Lato is kept for headings; Noto Sans SC is added for the body font.
+# Served through the loli.net Google-Fonts mirror.
+webfonts: https://fonts.loli.net/css2?family=Lato:wght@300;400&family=Noto+Sans+SC:wght@400;500;700&family=Source+Sans+Pro:wght@400;600;700;900&display=swap
+
+# Libraries
+#
+# Third-party bundles are mirrored under assets/lib so that page rendering no
+# longer depends on cdn.jsdelivr.net. `jsdelivr-combine.html` only merges URLs
+# on the jsDelivr domain, so plain paths below are emitted one <script> each.
+# Fonts and the Waline emoji sets are still served from remote mirrors.
+
+bootstrap:
+  css: /assets/lib/bootstrap/bootstrap.min.css
+
+toc:
+  css: /assets/lib/tocbot/tocbot.min.css
+  js: /assets/lib/tocbot/tocbot.min.js
+
+fontawesome:
+  css: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/font-awesome/7.0.1/css/all.min.css
+
+search:
+  js: https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/simple-jekyll-search/1.0.3/jekyll-search.min.js
+
+mermaid:
+  js: /assets/lib/mermaid/mermaid.min.js
+
+dayjs:
+  js:
+    common: /assets/lib/dayjs/dayjs.min.js
+    locale: /assets/lib/dayjs/locale/:LOCALE.js
+    relativeTime: /assets/lib/dayjs/plugin/relativeTime.js
+    localizedFormat: /assets/lib/dayjs/plugin/localizedFormat.js
+
+glightbox:
+  css: /assets/lib/glightbox/glightbox.min.css
+  js: /assets/lib/glightbox/glightbox.min.js
+
+lazy-polyfill:
+  css: /assets/lib/loading-attribute-polyfill/loading-attribute-polyfill.min.css
+  js: /assets/lib/loading-attribute-polyfill/loading-attribute-polyfill.umd.min.js
+
+clipboard:
+  js: /assets/lib/clipboard/clipboard.min.js
+
+mathjax:
+  js: https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js

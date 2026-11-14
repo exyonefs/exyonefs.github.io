@@ -1,0 +1,56 @@
+---
+---
+
+/* prettier-ignore */
+@use 'main
+{%- if jekyll.environment == 'production' -%}
+  .bundle
+{%- endif -%}
+';
+
+// append your custom style below
+
+// ---------------------------------------------------------------- theme only
+//
+// Everything rendered by the front-end bundle now carries its own CSS:
+// `_frontend/src/styles.ts` injects a single <style> element at runtime, in the
+// same script that builds the UI. Keeping those rules here would tie the
+// script's appearance to a separately fetched stylesheet - one more cross-origin
+// request, one more file that can 404 behind a CDN, and a broken layout when
+// the bundle is embedded on another site. This file now only customises the
+// theme itself.
+
+// Base typography
+.content {
+  font-family: "Noto Sans SC", "Sarasa Gothic SC",
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+#sidebar .site-title {
+  font-size: 1.5rem;
+}
+
+.icon-border {
+  visibility: hidden !important;
+  width: 0.4rem !important;
+  margin: 0 0.2rem !important;
+
+  @media (min-width: 1651px) { width: 0.6rem !important; }
+}
+
+@media (min-width: 576px) {
+  div[class^='language-'] .code-header::before {
+    background-color: #ff5f57;
+    box-shadow:
+      1.25rem 0 0 #febc2e,
+      2.5rem 0 0 #28c840;
+  }
+}
+
+// Theme-owned floaters stay out of printed pages; the enhancement overlays
+// (cards, menus, toasts, modal, progress bar, particle canvas) are hidden by
+// the print layer of the injected stylesheet.
+@media print {
+  #back-to-top,
+  .back-to-top { display: none !important; }
+}
