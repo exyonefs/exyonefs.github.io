@@ -3,6 +3,7 @@ title: "Waline 评论系统改造简记，Netlify + GitHub 免数据库 CSV 分�
 date: 2026-10-02
 categories: [devlog]
 tags: [open-source, Waline, Netlify, GitHub]
+pin: true
 ---
 
 9 月那篇[博客搬家记录](/posts/blog-migration-and-waline-comments/)的结尾留了个尾巴：文中的 Waline 改造后来又被我重新写了一遍，篇幅所限没有展开，只留了一句「欢迎访问仓库」。这篇文章把这件事补上：我用一套自定义存储适配器替换了 `@waline/vercel` 的「单文件 CSV」实现，把评论数据以 **CSV 分片文件**的形式存放在 GitHub 仓库里。改造只换底层存储，上层业务逻辑零改动。

@@ -36,24 +36,38 @@
  *
  *   npm run pages
  */
-import { mkdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import Parser from 'rss-parser';
 
 /* ------------------------------------------------------------------ Config -- */
 
-/** Feed endpoints, inlined (this used to live in a sibling `friends.json`). */
-const FEEDS: readonly string[] = [
-  'https://api.myblog.icu/api/public/rss',
-  'https://blog.liushen.fun/atom.xml',
-  'https://blog.talen.top/rss.xml',
-  'https://suo.ma/rss.xml',
-  'https://ttio.cc/feed.xml',
-  'https://www.hansjack.com/feed',
-  'https://www.mofei.life/zh/rss',
-  'https://www.qixz.cn/atom.xml'
-];
+/**
+ * Feed endpoints, loaded from `_data/friends.json` (repo root relative).
+ *
+ * The path is resolved against `process.cwd()`, which is the project root when
+ * the page generator runs via `npm run pages`.
+ */
+const FEEDS_FILE = path.join(process.cwd(), '_data', 'friends.json');
+
+/** Read + validate the feed list from the external config file. */
+function loadFeeds(): readonly string[] {
+  let raw: string;
+  try {
+    raw = readFileSync(FEEDS_FILE, 'utf8');
+  } catch (error) {
+    throw new Error(`Cannot read feed config at ${FEEDS_FILE}: ${toErrorMessage(error)}`);
+  }
+
+  const data: unknown = JSON.parse(raw);
+  if (!Array.isArray(data) || !data.every(u => typeof u === 'string')) {
+    throw new Error(`Feed config ${FEEDS_FILE} must be a JSON array of URL strings`);
+  }
+  return data as readonly string[];
+}
+
+const FEEDS: readonly string[] = loadFeeds();
 
 /**
  * Root of the generated page tree (repo-relative, gitignored).

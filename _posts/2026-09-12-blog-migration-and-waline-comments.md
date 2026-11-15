@@ -7,7 +7,6 @@ tags:
 - Jekyll
 - Waline
 image: https://jekyllrb.com/img/logo-2x.png
-pin: true
 ---
 
 > 前言：由于没有按捺住折腾的心，本文中对 Waline 的改造被我再度爆改升级，由于篇幅限制，不在本文中赘述了，欢迎访问[仓库](https://github.com/exyonefs/waline-csv-shard-archive)查看源码。
